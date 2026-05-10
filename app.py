@@ -1,6 +1,8 @@
 import os
 import csv
 import io
+import urllib.parse
+import math
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, Response # <-- Swapped StreamingResponse for Response
 from fastapi.templating import Jinja2Templates
@@ -43,6 +45,49 @@ def startup_event():
     else:
         print("❌ ERROR: Could not connect to the database. Please check your .env file.")
 
+def generate_dss_insights(cursor):
+    """
+    Internal Expert System to replace the external AI API.
+    It calculates how fast items are selling and predicts stockouts.
+    """
+    try:
+        # Look at sales from the last 7 days
+        cursor.execute("""
+            SELECT p.name, p.current_stock_jars, 
+                   COALESCE(SUM(oi.quantity), 0) as sold_last_7_days
+            FROM products p
+            LEFT JOIN order_items oi ON p.id = oi.product_id
+            LEFT JOIN orders o ON oi.order_id = o.id AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY p.id
+        """)
+        product_stats = cursor.fetchall()
+        
+        insights = []
+        for stat in product_stats:
+            # FIX: Force MySQL Data to become standard Python numbers
+            sold = float(stat['sold_last_7_days'] or 0)
+            stock = int(stat['current_stock_jars'] or 0)
+            name = stat['name']
+            
+            daily_velocity = sold / 7.0
+            
+            if stock == 0:
+                insights.append({"type": "critical", "message": f"STOCKOUT: {name} is completely out of stock. Halting sales."})
+            elif daily_velocity > 0:
+                days_remaining = stock / daily_velocity
+                if days_remaining <= 3:
+                    insights.append({"type": "warning", "message": f"URGENT: {name} is selling fast. Stock will deplete in about {int(days_remaining)} days. Produce more today."})
+                elif days_remaining > 14:
+                    insights.append({"type": "info", "message": f"OVERSTOCK: {name} is moving slowly. Consider running a weekend promotion."})
+            else:
+                insights.append({"type": "info", "message": f"NO MOVEMENT: {name} hasn't sold in 7 days. Check marketing."})
+                
+        return insights
+        
+    except Exception as e:
+        # SAFETY NET: If the math fails, print the error to the terminal but don't crash the website!
+        print(f"DSS Error: {e}")
+        return [{"type": "info", "message": "DSS System is calibrating data..."}]
 
 # ==========================================
 # AUTHENTICATION ROUTES
@@ -109,20 +154,43 @@ async def logout_user(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    """Shows the dashboard and loads ingredient data."""
+    """Shows the dashboard with KPI metrics and inventory alerts."""
     if 'username' not in request.session:
         return RedirectResponse(url="/", status_code=303)
         
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
+    
+    # 1. Fetch Ingredients for Low Stock Alerts
     cursor.execute("SELECT * FROM ingredients")
     ingredients_data = cursor.fetchall()
+    
+    # 2. KPI: Today's Revenue
+    # CURDATE() is a MySQL command that only grabs data from today!
+    cursor.execute("SELECT SUM(total_price) as today_revenue FROM orders WHERE DATE(created_at) = CURDATE()")
+    today_revenue = cursor.fetchone()['today_revenue'] or 0.0
+    
+    # 3. KPI: Pending Orders
+    cursor.execute("SELECT COUNT(id) as pending_count FROM orders WHERE status = 'pending'")
+    pending_orders = cursor.fetchone()['pending_count'] or 0
+    
+    # 4. KPI: Total Finished Jars on Shelf
+    cursor.execute("SELECT SUM(current_stock_jars) as total_jars FROM products")
+    total_jars = cursor.fetchone()['total_jars'] or 0
+    
+    # Generate our internal AI insights!
+    business_insights = generate_dss_insights(cursor)
+    
     db.close()
         
     return templates.TemplateResponse(request, "dashboard.html", {
         "username": request.session.get('username'),
         "role": request.session.get('role'),
-        "ingredients": ingredients_data
+        "ingredients": ingredients_data,
+        "today_revenue": today_revenue,
+        "pending_orders": pending_orders,
+        "total_jars": int(total_jars),
+        "insights": business_insights  # <-- ADD THIS LINE
     })
 
 # ==========================================
@@ -130,65 +198,35 @@ async def dashboard_page(request: Request):
 # ==========================================
 
 @app.get("/orders", response_class=HTMLResponse)
-async def orders_page(request: Request, search: str = None, page: int = 1, error: str = None, success: str = None):
-    """Shows the order management page with search, pagination, and notifications."""
-    if 'username' not in request.session:
-        return RedirectResponse(url="/", status_code=303)
-        
+async def view_orders(request: Request, error: str = None, success: str = None):
+    # Security check for appropriate roles
+    current_role = request.session.get('role')
+    if 'username' not in request.session or current_role not in ['admin', 'coordinator']:
+        return RedirectResponse(url="/dashboard", status_code=303)
+
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # Grab products for the dynamic form
-    cursor.execute("SELECT * FROM products")
+    # 1. Fetch products for the Create Order pop-up form
+    cursor.execute("SELECT id, name, price, current_stock_jars FROM products")
     products_data = cursor.fetchall()
     
-    # 1. Setup Pagination Math (15 records per page)
-    records_per_page = 15
-    offset = (page - 1) * records_per_page
+    # 2. Fetch the recent sales history for the main table
+    cursor.execute("""
+        SELECT id, customer_name, total_price, payment_method, payment_status, status, created_at 
+        FROM orders 
+        ORDER BY created_at DESC 
+        LIMIT 20
+    """)
+    recent_orders = cursor.fetchall()
     
-    # 2. Count Total Orders (respecting the search term if there is one!)
-    count_query = "SELECT COUNT(DISTINCT o.id) as total FROM orders o"
-    if search:
-        search_term = f"%{search}%"
-        count_query += " WHERE o.customer_name LIKE %s OR o.id = %s"
-        cursor.execute(count_query, (search_term, search if search.isdigit() else 0))
-    else:
-        cursor.execute(count_query)
-        
-    total_orders = cursor.fetchone()['total']
-    total_pages = (total_orders + records_per_page - 1) // records_per_page
-    if total_pages == 0:
-        total_pages = 1
-    
-    # 3. Fetch the actual records for this specific page
-    query = """
-        SELECT o.*, 
-               GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.name) SEPARATOR '<br>') as item_details
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.order_id
-        JOIN products p ON oi.product_id = p.id
-    """
-    
-    if search:
-        query += " WHERE o.customer_name LIKE %s OR o.id = %s "
-        query += " GROUP BY o.id ORDER BY o.created_at DESC LIMIT %s OFFSET %s"
-        cursor.execute(query, (search_term, search if search.isdigit() else 0, records_per_page, offset))
-    else:
-        query += " GROUP BY o.id ORDER BY o.created_at DESC LIMIT %s OFFSET %s"
-        cursor.execute(query, (records_per_page, offset))
-        
-    recent_orders_data = cursor.fetchall()
     db.close()
-    
     return templates.TemplateResponse(request, "orders.html", {
+        "request": request,
         "products": products_data,
-        "recent_orders": recent_orders_data,
-        "role": request.session.get('role'),
-        "search_query": search,
-        "current_page": page,
-        "total_pages": total_pages,
-        "error": error,      # NEW: Pass error to HTML
-        "success": success   # NEW: Pass success to HTML
+        "recent_orders": recent_orders,
+        "error": error,
+        "success": success
     })
 
 @app.post("/orders")
@@ -306,21 +344,21 @@ async def update_order(request: Request):
 
 
 # ==========================================
-# PRODUCTION ROUTES (Separated WIP & Completed)
+# PRODUCTION & SCHEDULE ROUTES
 # ==========================================
 
 import math
 
 @app.get("/production", response_class=HTMLResponse)
 async def production_page(request: Request, error: str = None, success: str = None):
-    """Shows production capabilities and separated batch boards."""
+    """Shows production capabilities and the button to log a new batch."""
     if 'username' not in request.session:
         return RedirectResponse(url="/", status_code=303)
         
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # 1. Fetch products and calculate max possible jars
+    # Fetch products and calculate max possible jars based on inventory
     cursor.execute("SELECT id, name, current_stock_jars, price FROM products")
     products_data = cursor.fetchall()
     
@@ -342,32 +380,10 @@ async def production_page(request: Request, error: str = None, success: str = No
                         
         product['max_possible'] = max_jars if max_jars != float('inf') else 0
         
-    # 2. Fetch the 'In Progress' (WIP) History
-    cursor.execute("""
-        SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id
-        FROM production_batches pb
-        JOIN products p ON pb.product_id = p.id
-        WHERE pb.status = 'in_progress'
-        ORDER BY pb.created_at DESC
-    """)
-    wip_data = cursor.fetchall()
-
-    # 3. Fetch the 'Completed' History
-    cursor.execute("""
-        SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id
-        FROM production_batches pb
-        JOIN products p ON pb.product_id = p.id
-        WHERE pb.status = 'completed'
-        ORDER BY pb.created_at DESC LIMIT 30
-    """)
-    completed_data = cursor.fetchall()
-
     db.close()
     
     return templates.TemplateResponse(request, "production.html", {
         "products": products_data,
-        "wip_batches": wip_data,              # NEW: Passed separated data
-        "completed_batches": completed_data,  # NEW: Passed separated data
         "role": request.session.get('role'),
         "error": error,      
         "success": success   
@@ -378,7 +394,6 @@ async def log_production(
     request: Request,
     product_id: int = Form(...),
     jars_produced: int = Form(...)
-    # Notice we completely removed the status Form input!
 ):
     """Validates stock, deducts ingredients, and forces status to In Progress."""
     if 'username' not in request.session:
@@ -390,7 +405,7 @@ async def log_production(
     cursor.execute("SELECT ingredient_id, amount_needed FROM recipes WHERE product_id = %s", (product_id,))
     recipe_items = cursor.fetchall()
     
-    # 1. VALIDATION: Check if we have enough ingredients
+    # 1. VALIDATION
     for item in recipe_items:
         cursor.execute("SELECT name, current_stock_usage FROM ingredients WHERE id = %s", (item['ingredient_id'],))
         ing = cursor.fetchone()
@@ -400,14 +415,14 @@ async def log_production(
             db.close()
             return RedirectResponse(url=f"/production?error=Action Blocked: Not enough {ing['name']} to make {jars_produced} jars.", status_code=303)
             
-    # 2. DEDUCTION: Deduct the raw ingredients
+    # 2. DEDUCTION
     for item in recipe_items:
         amount_to_deduct = item['amount_needed'] * jars_produced
         cursor.execute("""
             UPDATE ingredients SET current_stock_usage = current_stock_usage - %s WHERE id = %s
         """, (amount_to_deduct, item['ingredient_id']))
         
-    # 3. Log the batch and FORCE it to be 'in_progress'
+    # 3. Log the batch (Forces it to 'in_progress')
     forced_status = 'in_progress'
     cursor.execute("""
         INSERT INTO production_batches (product_id, jars_produced, status) VALUES (%s, %s, %s)
@@ -418,7 +433,48 @@ async def log_production(
     
     db.commit()
     db.close()
-    return RedirectResponse(url="/production?success=Batch started successfully!", status_code=303)
+    
+    # Send them a success message and remind them to check the Schedule page!
+    return RedirectResponse(url="/production?success=Batch started! Ingredients deducted. Check the Schedule page to track it.", status_code=303)
+
+@app.get("/schedule", response_class=HTMLResponse)
+async def schedule_page(request: Request, error: str = None, success: str = None):
+    """Shows the Work In Progress and Completed batches."""
+    if 'username' not in request.session:
+        return RedirectResponse(url="/", status_code=303)
+        
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    
+    # Fetch WIP History
+    cursor.execute("""
+        SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id
+        FROM production_batches pb
+        JOIN products p ON pb.product_id = p.id
+        WHERE pb.status = 'in_progress'
+        ORDER BY pb.created_at DESC
+    """)
+    wip_data = cursor.fetchall()
+
+    # Fetch Completed History
+    cursor.execute("""
+        SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id
+        FROM production_batches pb
+        JOIN products p ON pb.product_id = p.id
+        WHERE pb.status = 'completed'
+        ORDER BY pb.created_at DESC LIMIT 30
+    """)
+    completed_data = cursor.fetchall()
+
+    db.close()
+    
+    return templates.TemplateResponse(request, "schedule.html", {
+        "wip_batches": wip_data,
+        "completed_batches": completed_data,
+        "role": request.session.get('role'),
+        "error": error,      
+        "success": success   
+    })
 
 @app.post("/production/update")
 async def update_production_status(request: Request, batch_id: int = Form(...)):
@@ -433,7 +489,7 @@ async def update_production_status(request: Request, batch_id: int = Form(...)):
     batch = cursor.fetchone()
     
     if batch:
-        # Add the jars to the shelf!
+        # Add the jars to the shelf
         cursor.execute("UPDATE products SET current_stock_jars = current_stock_jars + %s WHERE id = %s", (batch['jars_produced'], batch['product_id']))
         
         # Change status to completed
@@ -443,34 +499,47 @@ async def update_production_status(request: Request, batch_id: int = Form(...)):
         db.commit()
         
     db.close()
-    return RedirectResponse(url="/production?success=Batch marked as Completed! Jars added to inventory.", status_code=303)
+    
+    # Redirect back to the SCHEDULE page where they clicked the button!
+    return RedirectResponse(url="/schedule?success=Batch marked as Completed! Jars added to inventory.", status_code=303)
 
 
 # ==========================================
-# INVENTORY ROUTES (With Cost Tracking)
+# INVENTORY ROUTES (With Cost Tracking & Pagination)
 # ==========================================
 
 @app.get("/inventory", response_class=HTMLResponse)
-async def inventory_page(request: Request):
-    """Shows current inventory status and the new purchase history."""
+async def inventory_page(request: Request, page: int = 1):
+    """Shows current inventory status and paginated purchase history."""
     if 'username' not in request.session:
         return RedirectResponse(url="/", status_code=303)
         
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # 1. Fetch current stock
+    # 1. Fetch current stock (Left Side)
     cursor.execute("SELECT * FROM ingredients")
     ingredients_data = cursor.fetchall()
     
-    # 2. Fetch the new purchase history
+    # 2. Pagination Math (Reduced to 6 items to eliminate vertical scrolling!)
+    records_per_page = 6
+    offset = (page - 1) * records_per_page
+    
+    cursor.execute("SELECT COUNT(*) as total FROM ingredient_purchases")
+    total_records = cursor.fetchone()['total']
+    total_pages = (total_records + records_per_page - 1) // records_per_page
+    if total_pages == 0:
+        total_pages = 1
+    
+    # 3. Fetch the exact 6 records for the current page (Right Side)
     cursor.execute("""
         SELECT ip.id, ip.created_at, i.name as ingredient_name, 
                ip.purchase_amount, i.purchase_unit, ip.cost 
         FROM ingredient_purchases ip
         JOIN ingredients i ON ip.ingredient_id = i.id
-        ORDER BY ip.created_at DESC LIMIT 30
-    """)
+        ORDER BY ip.created_at DESC 
+        LIMIT %s OFFSET %s
+    """, (records_per_page, offset))
     history_data = cursor.fetchall()
     
     db.close()
@@ -478,7 +547,9 @@ async def inventory_page(request: Request):
     return templates.TemplateResponse(request, "inventory.html", {
         "ingredients": ingredients_data,
         "history": history_data,
-        "role": request.session.get('role')
+        "role": request.session.get('role'),
+        "current_page": page,
+        "total_pages": total_pages
     })
 
 @app.post("/inventory/purchase")
@@ -806,7 +877,7 @@ async def export_sales_csv(request: Request):
 # ==========================================
 
 @app.get("/users", response_class=HTMLResponse)
-async def users_page(request: Request):
+async def users_page(request: Request, error: str = None, success: str = None):
     """Shows the user management page (Admin only)."""
     if 'username' not in request.session or request.session.get('role') != 'admin':
         return RedirectResponse(url="/dashboard", status_code=303)
@@ -820,9 +891,12 @@ async def users_page(request: Request):
     db.close()
     
     return templates.TemplateResponse(request, "users.html", {
+        "request": request,  # Required for base.html session checks
         "users": users_data,
         "user_count": len(users_data),
-        "current_user": request.session.get('username') # NEW: So we know who is looking at the page!
+        "current_user": request.session.get('username'),
+        "error": error,      # NEW: Passes error to the Toast notification
+        "success": success   # NEW: Passes success to the Toast notification
     })
 
 @app.post("/users")
@@ -833,13 +907,27 @@ async def create_user(
     role: str = Form(...),
     password: str = Form(...)
 ):
-    """Creates a new user account if the limit hasn't been reached."""
+    """Creates a new user account if the limit hasn't been reached and the role is vacant."""
     if 'username' not in request.session or request.session.get('role') != 'admin':
         return RedirectResponse(url="/dashboard", status_code=303)
 
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
+    # --- NEW: BUSINESS RULE CONSTRAINT ---
+    # Check if an active user already holds this exact role
+    cursor.execute("SELECT full_name FROM users WHERE role = %s AND status = 'active'", (role,))
+    existing_active_user = cursor.fetchone()
+
+    if existing_active_user:
+        db.close()
+        # Format the error message and encode it for the URL
+        raw_msg = f"Action blocked: {existing_active_user['full_name']} is currently the active {role}. Deactivate them first."
+        error_msg = urllib.parse.quote(raw_msg)
+        return RedirectResponse(url=f"/users?error={error_msg}", status_code=303)
+    # --- END CONSTRAINT ---
+
+    # Check if maximum employee limit is reached
     cursor.execute("SELECT COUNT(*) as count FROM users WHERE status = 'active'")
     count_result = cursor.fetchone()
     
@@ -853,9 +941,16 @@ async def create_user(
         log_audit(current_user, "SYSTEM", f"Created new {role} account for {full_name} ({username}).")
         
         db.commit()
+        db.close()
+        
+        success_msg = urllib.parse.quote(f"Successfully added {full_name} as the new {role}.")
+        return RedirectResponse(url=f"/users?success={success_msg}", status_code=303)
         
     db.close()
-    return RedirectResponse(url="/users", status_code=303)
+    
+    # Trigger an error if they try to exceed the 4-user limit
+    error_msg = urllib.parse.quote("Maximum limit of 4 active users reached.")
+    return RedirectResponse(url=f"/users?error={error_msg}", status_code=303)
 
 @app.post("/users/delete")
 async def remove_user(request: Request, user_id: int = Form(...)):
@@ -868,7 +963,7 @@ async def remove_user(request: Request, user_id: int = Form(...)):
     cursor = db.cursor(dictionary=True)
     
     # Find the user we are trying to delete
-    cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+    cursor.execute("SELECT username, role FROM users WHERE id = %s", (user_id,))
     target_user = cursor.fetchone()
     
     # Safety Check: You cannot delete yourself!
@@ -882,9 +977,15 @@ async def remove_user(request: Request, user_id: int = Form(...)):
         log_audit(admin_username, "SYSTEM", f"Deactivated user account: {target_user['username']}.")
         
         db.commit()
+        db.close()
+        
+        success_msg = urllib.parse.quote(f"User {target_user['username']} has been deactivated. The {target_user['role']} role is now vacant.")
+        return RedirectResponse(url=f"/users?success={success_msg}", status_code=303)
 
     db.close()
-    return RedirectResponse(url="/users", status_code=303)
+    error_msg = urllib.parse.quote("You cannot delete your own admin account.")
+    return RedirectResponse(url=f"/users?error={error_msg}", status_code=303)
+
 # ==========================================
 # AUDIT TRAIL ROUTE
 # ==========================================
