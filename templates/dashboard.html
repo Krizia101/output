@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-title">
+    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🌱</div>
+    Dashboard Overview
+</div>
+
+<!-- Welcome Section -->
+<div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px;">
+    <h2 style="margin-bottom: 5px;">Welcome back, {{ username }}!</h2>
+    <p style="color: var(--color-text-secondary); font-size: 13px;">Here is your quick summary of Pestong Yummy PH operations.</p>
+</div>
+
+<!-- Critical Alerts Section -->
+<h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+    🚨 Action Needed: Low Stock Alerts
+</h3>
+
+<div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+    
+    <!-- This loop ONLY runs for items that are low on stock -->
+    {% for item in ingredients if item.current_stock_usage <= item.low_stock_threshold %}
+        <div style="background: #FCEBEB; border: 1px solid #F09595; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+            <div style="font-size: 24px;">⚠</div>
+            <div>
+                <strong style="color: #A32D2D; font-size: 14px;">{{ item.name }} is running low!</strong><br>
+                <span style="font-size: 12px; color: #666;">
+                    Current Stock: <strong style="color: #A32D2D;">{{ item.current_stock_usage }} {{ item.usage_unit }}</strong> 
+                    (Threshold: {{ item.low_stock_threshold }})
+                </span>
+            </div>
+        </div>
+    
+    <!-- If the loop finds NO low stock items, it shows this happy message instead! -->
+    {% else %}
+        <div style="background: #EAF3DE; border: 1px solid #C0DD97; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+            <div style="font-size: 24px;">✨</div>
+            <div>
+                <strong style="color: #3B6D11; font-size: 14px;">All Clear!</strong><br>
+                <span style="font-size: 12px; color: #666;">Your inventory is perfectly healthy. No ingredients are below their critical thresholds.</span>
+            </div>
+        </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

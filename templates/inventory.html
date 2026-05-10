@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header with the new Button -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="page-title" style="margin: 0;">
+        <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🌾</div>
+        Ingredient Inventory
+    </div>
+    
+    <!-- This button triggers the JavaScript to open the Modal -->
+    <button onclick="openModal()" class="btn-leaf" style="padding: 8px 16px; font-weight: bold;">
+        + Log New Purchase
+    </button>
+</div>
+
+<!-- Main Layout: Two Data Tables -->
+<div style="display: flex; gap: 20px;">
+    
+    <!-- Left Side: Current Stock & Status Display -->
+    <div style="flex: 1.5; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 600px; overflow-y: auto;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📦 Full Inventory Status</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Ingredient</th>
+                    <th style="padding: 10px;">Current Stock</th>
+                    <th style="padding: 10px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ingredients %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: 500;">{{ item.name }}</td>
+                    
+                    {% if item.current_stock_usage <= item.low_stock_threshold %}
+                        <td style="padding: 10px; color: #A32D2D; font-weight: bold;">
+                    {% else %}
+                        <td style="padding: 10px; font-weight: bold;">
+                    {% endif %}
+                        {{ "{:,.1f}".format(item.current_stock_usage) }} {{ item.usage_unit }}
+                    </td>
+
+                    <td style="padding: 10px;">
+                        {% if item.current_stock_usage <= item.low_stock_threshold %}
+                            <span style="background: #FCEBEB; color: #A32D2D; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; border: 0.5px solid #F09595;">Low Stock</span>
+                        {% else %}
+                            <span style="background: #EAF3DE; color: #3B6D11; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; border: 0.5px solid #C0DD97;">Healthy</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Right Side: Purchase History -->
+    <div style="flex: 1; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 600px; overflow-y: auto;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📜 Restock & Expense History</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Date</th>
+                    <th style="padding: 10px;">Ingredient & Amount</th>
+                    <th style="padding: 10px;">Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in history %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; color: var(--color-text-secondary); font-size: 10px;">
+                        {{ record.created_at.strftime('%b %d, %Y') }}<br>
+                        {{ record.created_at.strftime('%I:%M %p') }}
+                    </td>
+                    <td style="padding: 10px;">
+                        <strong style="font-size: 13px;">{{ record.ingredient_name }}</strong><br>
+                        <span style="color: #666;">+{{ record.purchase_amount }} {{ record.purchase_unit }}</span>
+                    </td>
+                    <td style="padding: 10px; font-weight: bold; color: #A32D2D;">
+                        ₱{{ "{:,.2f}".format(record.cost) }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" style="padding: 10px; text-align: center; color: #666;">No purchase history yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- ========================================== -->
+<!-- THE FLOATING MODAL FORM (Purchases Only) -->
+<!-- ========================================== -->
+<div id="restockModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; color: var(--leaf); display: flex; align-items: center; gap: 8px;">🛒 Log Market Purchase</h3>
+            <button onclick="closeModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">&times;</button>
+        </div>
+        
+        <form action="/inventory/purchase" method="POST">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label class="form-label">Select Item</label>
+                <select name="ingredient_id" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+                    {% for item in ingredients %}
+                        <!-- NEW: We added this IF statement to hide the herbs! -->
+                        {% if item.name not in ['Basil', 'Spinach', 'Malunggay', 'Mint'] %}
+                            <option value="{{ item.id }}">{{ item.name }} (buy per {{ item.purchase_unit }})</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label class="form-label">Amount Purchased</label>
+                    <input type="number" name="purchase_amount" step="0.01" min="0.01" placeholder="e.g. 2.5" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;" required>
+                </div>
+                <div style="flex: 1;">
+                    <label class="form-label">Total Cost (₱)</label>
+                    <input type="number" name="cost" step="0.01" min="0" placeholder="e.g. 150.00" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-leaf" style="width: 100%; padding: 12px; font-weight: bold;">Log Purchase & Deduct Funds</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal() { document.getElementById('restockModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('restockModal').style.display = 'none'; }
+</script>
+{% endblock %}

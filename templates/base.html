@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pestong Yummy PH</title>
+    <style>
+        /* Your beautiful botanical CSS variables */
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --leaf:#3B6D11;--leaf-mid:#639922;--leaf-light:#EAF3DE;--leaf-border:#C0DD97;
+            --color-background-primary:#FFFFFF; --color-background-secondary:#F9F9F9; --color-background-tertiary:#F0F2EE;
+            --color-text-primary:#333; --color-text-secondary:#666;
+            --border-radius-lg: 12px; --border-radius-md: 8px;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--color-background-tertiary); color: var(--color-text-primary); font-size: 13px; }
+        
+        /* Navigation Bar */
+        .nav { display:flex; align-items:center; background:var(--leaf); height:46px; padding:0 14px; gap:2px; position:sticky; top:0; z-index:50; color: white; }
+        .nav-brand { display:flex; align-items:center; gap:7px; font-weight:500; font-size:13px; margin-right:10px; }
+        .leaf-logo { width:22px; height:22px; background:rgba(255,255,255,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center; }
+        .nav-btn { color:rgba(255,255,255,0.8); font-size:12px; padding:4px 9px; border-radius:5px; cursor:pointer; border:none; background:none; text-decoration: none; }
+        .nav-btn:hover, .nav-btn.active { background:rgba(255,255,255,0.18); color:#fff; }
+        .nav-r { margin-left:auto; display:flex; align-items:center; gap:8px; }
+        
+        /* Layout */
+        .shell { display:flex; height:calc(100vh - 46px); }
+        .content { flex:1; overflow-y:auto; padding:16px; }
+        .page-title { font-size:16px; font-weight:500; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+        
+        /* Form & Login Elements */
+        .login-wrap { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--color-background-tertiary); }
+        .login-card { background:var(--color-background-primary); border-radius:var(--border-radius-lg); padding:30px 26px; width:300px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom:10px; text-align: left; }
+        .form-label { font-size:11px; font-weight:500; color:var(--color-text-secondary); display:block; margin-bottom:4px; }
+        input { width:100%; padding:8px; border:1px solid #ccc; border-radius:var(--border-radius-md); }
+        .btn-leaf { background:var(--leaf); color:#fff; border:none; padding:8px 12px; border-radius:var(--border-radius-md); cursor:pointer; width: 100%; }
+        .btn-leaf:hover { background:var(--leaf-mid); }
+    </style>
+</head>
+<body>
+    <!-- Jinja2 Block: If this is the login page, it will skip the navbar. -->
+    {% block layout %}
+    <nav class="nav">
+        <div class="nav-brand"><div class="leaf-logo">🌿</div>Pestong Yummy PH</div>
+        <div style="display:flex;gap:2px;flex:1;">
+            <a href="/dashboard" class="nav-btn active">Dashboard</a>
+            <a href="/orders" class="nav-btn">Orders</a>
+            <a href="/customers" class="nav-btn">Customers</a>
+            <a href="/inventory" class="nav-btn">Inventory</a>
+            <a href="/production" class="nav-btn">Production</a>
+            <a href="/harvest" class="nav-btn">Harvest</a>
+            <a href="/reports" class="nav-btn">Reports</a>
+            <a href="/audit" class="nav-btn">Audit Log</a>
+            <a href="/users" class="nav-btn">Users</a>
+        </div>
+        <div class="nav-r">
+            <span style="font-size: 12px;">Welcome, Admin</span>
+            <a href="/logout" class="nav-btn" style="background:rgba(255,255,255,0.12); padding:3px 8px;">Logout</a>
+        </div>
+    </nav>
+    <div class="shell">
+        <div class="content">
+            <!-- This is where the specific page content will be injected -->
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    {% endblock %}
+</body>
+</html>

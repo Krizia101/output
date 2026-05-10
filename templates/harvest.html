@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-title">
+    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🌱</div>
+    Herb Harvest Log
+</div>
+
+<div style="display: flex; gap: 20px; align-items: flex-start;">
+    
+    <!-- Left Side: Log Form -->
+    <div style="flex: 1; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; position: sticky; top: 20px;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">🌿 Log New Harvest</h3>
+        
+        <form action="/harvest" method="POST">
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label class="form-label" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px;">Select Crop to Harvest</label>
+                <select name="ingredient_id" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+                    {% for herb in herbs %}
+                        <option value="{{ herb.id }}">{{ herb.name }} (log per {{ herb.purchase_unit }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px;">Amount Harvested</label>
+                <input type="number" name="harvest_amount" step="0.01" min="0.01" placeholder="e.g., 1.5" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;" required>
+            </div>
+            
+            <button type="submit" class="btn-leaf" style="width: 100%; padding: 12px; font-weight: bold; cursor: pointer;">
+                Log Harvest to Pantry
+            </button>
+        </form>
+    </div>
+
+    <!-- Right Side: Recent Harvests Table -->
+    <div style="flex: 1.5; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 500px; overflow-y: auto;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📋 Recent Harvests</h3>
+        
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Date & Time</th>
+                    <th style="padding: 10px;">Herb</th>
+                    <th style="padding: 10px;">Amount Added</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Now correctly looping through the 'history' variable from app.py -->
+                {% for record in history %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; color: var(--color-text-secondary); font-size: 11px;">
+                        {{ record.created_at.strftime('%b %d, %Y') }}<br>
+                        {{ record.created_at.strftime('%I:%M %p') }}
+                    </td>
+                    <td style="padding: 10px; font-weight: bold; font-size: 13px;">{{ record.ingredient_name }}</td>
+                    
+                    <!-- Dynamically renders the correct unit (e.g., kilos) -->
+                    <td style="padding: 10px; color: var(--leaf); font-weight: bold;">
+                        +{{ record.harvest_amount }} {{ record.purchase_unit }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" style="padding: 10px; text-align: center; color: #666;">No recent harvests logged.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+{% endblock %}

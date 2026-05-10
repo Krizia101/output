@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-title">
+    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">📊</div>
+    Business Reports
+</div>
+
+<!-- Tab Navigation & Export Buttons -->
+<div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:15px;">
+    
+    <div style="display:flex; gap:10px;">
+        <button onclick="switchTab('weekly')" id="btn-weekly" class="btn-leaf" style="padding: 8px 16px;">Weekly</button>
+        <button onclick="switchTab('monthly')" id="btn-monthly" class="btn-leaf" style="padding: 8px 16px; background:var(--color-background-secondary); color:var(--color-text-primary); border:1px solid #ccc;">Monthly</button>
+        <button onclick="switchTab('payment')" id="btn-payment" class="btn-leaf" style="padding: 8px 16px; background:var(--color-background-secondary); color:var(--color-text-primary); border:1px solid #ccc;">Payment Breakdown</button>
+    </div>
+    
+    <!-- NEW: The Export Button -->
+    <div>
+        <a href="/reports/export" class="btn-leaf" style="display: inline-block; background: #0C447C; text-decoration: none;">
+            📥 Download Full Sales Report (CSV)
+        </a>
+    </div>
+
+</div>
+
+<div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd;">
+    
+    <!-- WEEKLY TAB CONTENT -->
+    <div id="tab-weekly" style="display: block;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📅 Weekly Summaries</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Period</th>
+                    <th style="padding: 10px;">Total Orders</th>
+                    <th style="padding: 10px;">Jars Sold</th>
+                    <th style="padding: 10px;">Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in weekly %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">{{ row.period }}</td>
+                    <td style="padding: 10px;">{{ row.total_orders }}</td>
+                    <td style="padding: 10px;">{{ row.total_jars }}</td>
+                    <td style="padding: 10px; color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="padding: 10px; text-align: center; color: #666;">No sales data available yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MONTHLY TAB CONTENT -->
+    <div id="tab-monthly" style="display: none;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📆 Monthly Summaries</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Month</th>
+                    <th style="padding: 10px;">Total Orders</th>
+                    <th style="padding: 10px;">Jars Sold</th>
+                    <th style="padding: 10px;">Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in monthly %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold;">{{ row.period }}</td>
+                    <td style="padding: 10px;">{{ row.total_orders }}</td>
+                    <td style="padding: 10px;">{{ row.total_jars }}</td>
+                    <td style="padding: 10px; color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- PAYMENT TAB CONTENT -->
+    <div id="tab-payment" style="display: none;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">💳 Payment Method Breakdown</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
+                    <th style="padding: 10px;">Payment Method</th>
+                    <th style="padding: 10px;">Total Transactions</th>
+                    <th style="padding: 10px;">Total Revenue Collected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in payments %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">
+                        <span style="background: #E6F1FB; color: #0C447C; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                            {{ row.payment_method }}
+                        </span>
+                    </td>
+                    <td style="padding: 10px;">{{ row.total_orders }}</td>
+                    <td style="padding: 10px; color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- JavaScript to handle clicking the tabs -->
+<script>
+    function switchTab(tabId) {
+        // 1. Hide all tab content
+        document.getElementById('tab-weekly').style.display = 'none';
+        document.getElementById('tab-monthly').style.display = 'none';
+        document.getElementById('tab-payment').style.display = 'none';
+        
+        // 2. Reset all buttons to look unselected (gray)
+        let buttons = ['btn-weekly', 'btn-monthly', 'btn-payment'];
+        buttons.forEach(function(btn) {
+            document.getElementById(btn).style.background = 'var(--color-background-secondary)';
+            document.getElementById(btn).style.color = 'var(--color-text-primary)';
+            document.getElementById(btn).style.borderColor = '#ccc';
+        });
+        
+        // 3. Show the selected tab content and make its button look selected (green)
+        document.getElementById('tab-' + tabId).style.display = 'block';
+        document.getElementById('btn-' + tabId).style.background = 'var(--leaf)';
+        document.getElementById('btn-' + tabId).style.color = 'white';
+        document.getElementById('btn-' + tabId).style.borderColor = 'var(--leaf)';
+    }
+</script>
+{% endblock %}
