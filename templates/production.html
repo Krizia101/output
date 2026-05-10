@@ -1,53 +1,47 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Error and Success Notification Banners -->
 {% if error %}
-<div style="background-color: #FCEBEB; color: #A32D2D; padding: 12px 15px; border-radius: 8px; border: 1px solid #F09595; margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+<div class="card" style="background-color: #FCEBEB; border-color: #F09595; color: #A32D2D; padding: 12px 15px; margin-bottom: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
     <span>⚠️</span> {{ error }}
 </div>
 {% endif %}
 
 {% if success %}
-<div style="background-color: #EAF3DE; color: #3B6D11; padding: 12px 15px; border-radius: 8px; border: 1px solid #C0DD97; margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+<div class="card" style="background-color: #EAF3DE; border-color: #C0DD97; color: #3B6D11; padding: 12px 15px; margin-bottom: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
     <span>✅</span> {{ success }}
 </div>
 {% endif %}
 
-
-<!-- Page Header & Action Button -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <div class="page-title" style="margin: 0;">
         <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🏭</div>
         Production Floor
     </div>
     
-    <button onclick="openModal()" class="btn-leaf" style="padding: 8px 16px; font-weight: bold;">
+    <button onclick="openModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">
         + Log New Batch
     </button>
 </div>
 
-<!-- Main Layout -->
-<div style="display: flex; gap: 20px; align-items: flex-start;">
+<div class="card">
+    <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">📊 Production Capabilities</h3>
     
-    <!-- Left Side: Production Capabilities -->
-    <div style="flex: 1.2; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; position: sticky; top: 20px;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📊 Production Capabilities</h3>
-        
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+    <div style="overflow-x: auto; width: 100%;">
+        <table class="table-custom">
             <thead>
-                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
-                    <th style="padding: 10px;">Variant</th>
-                    <th style="padding: 10px;">On Shelf</th>
-                    <th style="padding: 10px;">Max Possible</th>
+                <tr>
+                    <th>Variant</th>
+                    <th>On Shelf</th>
+                    <th>Max Possible Based on Ingredients</th>
                 </tr>
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; font-weight: bold;">{{ product.name }}</td>
-                    <td style="padding: 10px; color: var(--leaf); font-weight: bold;">{{ product.current_stock_jars }}</td>
-                    <td style="padding: 10px;">
+                <tr>
+                    <td style="font-weight: 600;">{{ product.name }}</td>
+                    <td style="color: var(--leaf); font-weight: bold; font-size: 14px;">{{ product.current_stock_jars }}</td>
+                    <td>
                         {% if product.max_possible > 0 %}
                             <span style="background: #EAF3DE; color: #3B6D11; padding: 4px 10px; border-radius: 6px; font-weight: bold;">{{ product.max_possible }} jars</span>
                         {% else %}
@@ -59,87 +53,20 @@
             </tbody>
         </table>
     </div>
-
-    <!-- Right Side: Two Stacked Tables -->
-    <div style="flex: 1.8; display: flex; flex-direction: column; gap: 20px;">
-        
-        <!-- TABLE 1: WORK IN PROGRESS -->
-        <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 350px; overflow-y: auto;">
-            <h3 style="margin-bottom: 15px; font-size: 14px; color: #854F0B;">⏳ Work In Progress (WIP)</h3>
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #eee; background-color: #FFF3CD;">
-                        <th style="padding: 10px;">Date Started</th>
-                        <th style="padding: 10px;">Variant</th>
-                        <th style="padding: 10px;">Amount</th>
-                        <th style="padding: 10px;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for batch in wip_batches %}
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; color: var(--color-text-secondary); font-size: 10px;">
-                            {{ batch.created_at.strftime('%b %d, %Y') }}<br>{{ batch.created_at.strftime('%I:%M %p') }}
-                        </td>
-                        <td style="padding: 10px; font-weight: bold; font-size: 13px;">{{ batch.product_name }}</td>
-                        <td style="padding: 10px; color: var(--leaf); font-weight: bold;">{{ batch.jars_produced }} jars</td>
-                        <td style="padding: 10px;">
-                            <form action="/production/update" method="POST" style="margin: 0;">
-                                <input type="hidden" name="batch_id" value="{{ batch.id }}">
-                                <button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">✅ Mark Completed</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="4" style="padding: 10px; text-align: center; color: #666;">No active batches right now.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- TABLE 2: COMPLETED BATCHES -->
-        <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 350px; overflow-y: auto;">
-            <h3 style="margin-bottom: 15px; font-size: 14px; color: #3B6D11;">✅ Completed Batches</h3>
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #eee; background-color: #EAF3DE;">
-                        <th style="padding: 10px;">Date Finished</th>
-                        <th style="padding: 10px;">Variant</th>
-                        <th style="padding: 10px;">Amount Added to Shelf</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for batch in completed_batches %}
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; color: var(--color-text-secondary); font-size: 10px;">
-                            {{ batch.created_at.strftime('%b %d, %Y') }}<br>{{ batch.created_at.strftime('%I:%M %p') }}
-                        </td>
-                        <td style="padding: 10px; font-weight: bold; font-size: 13px;">{{ batch.product_name }}</td>
-                        <td style="padding: 10px; color: var(--leaf); font-weight: bold;">+{{ batch.jars_produced }} jars</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="3" style="padding: 10px; text-align: center; color: #666;">No completed batches yet.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-    </div>
 </div>
 
-<!-- THE SIMPLIFIED FLOATING MODAL FORM -->
-<div id="productionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
-    <div style="background: white; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+<div id="productionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card" style="width: 100%; max-width: 400px; margin: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; font-size: 16px; color: var(--leaf); display: flex; align-items: center; gap: 8px;">🏭 Start New Batch</h3>
-            <button onclick="closeModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">&times;</button>
+            <h3 style="margin: 0; font-size: 18px; color: var(--leaf); display: flex; align-items: center; gap: 8px;">🏭 Start New Batch</h3>
+            <button onclick="closeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999; line-height: 1;">&times;</button>
         </div>
         
         <form action="/production" method="POST">
             <div class="form-group" style="margin-bottom: 15px;">
-                <label class="form-label">Variant to Produce</label>
-                <select name="product_id" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+                <label class="form-label" style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 5px;">Variant to Produce</label>
+                <select name="product_id" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: var(--radius-md); font-size: 14px;">
                     {% for product in products %}
                         <option value="{{ product.id }}">{{ product.name }}</option>
                     {% endfor %}
@@ -147,15 +74,11 @@
             </div>
             
             <div style="margin-bottom: 20px;">
-                <label class="form-label">Jars to Produce</label>
-                <input type="number" name="jars_produced" min="1" value="1" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;" required>
+                <label class="form-label" style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 5px;">Jars to Produce</label>
+                <input type="number" name="jars_produced" min="1" value="1" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: var(--radius-md); font-size: 14px;" required>
             </div>
             
-            <div style="background: #FFF3CD; border: 1px solid #FFEEBA; color: #856404; padding: 10px; border-radius: 8px; font-size: 11px; margin-bottom: 20px;">
-                <strong>Note:</strong> Starting a batch will deduct ingredients immediately and place the batch in the "Work In Progress" queue.
-            </div>
-            
-            <button type="submit" class="btn-leaf" style="width: 100%; padding: 12px; font-weight: bold;">Start Production & Deduct Ingredients</button>
+            <button type="submit" class="btn-leaf" style="padding: 14px; font-size: 14px;">Start Production & Deduct Ingredients</button>
         </form>
     </div>
 </div>

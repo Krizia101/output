@@ -6,22 +6,108 @@
     Dashboard Overview
 </div>
 
-<!-- Welcome Section -->
-<div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px;">
+<div class="card">
     <h2 style="margin-bottom: 5px;">Welcome back, {{ username }}!</h2>
-    <p style="color: var(--color-text-secondary); font-size: 13px;">Here is your quick summary of Pestong Yummy PH operations.</p>
+    <p style="color: var(--text-muted); font-size: 14px;">Here is your quick summary of Pestong Yummy PH operations.</p>
 </div>
 
-<!-- Critical Alerts Section -->
-<h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+{% if role == 'admin' %}
+
+    <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+        🧠 Smart Business Insights (DSS)
+    </h3>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
+        {% for insight in insights %}
+            {% if insight.type == 'critical' %}
+                <div style="background: #FCEBEB; border-left: 5px solid #A32D2D; padding: 12px 15px; border-radius: 6px; font-weight: 500;">
+                    🚨 {{ insight.message }}
+                </div>
+            {% elif insight.type == 'warning' %}
+                <div style="background: #FFF3CD; border-left: 5px solid #856404; padding: 12px 15px; border-radius: 6px; font-weight: 500;">
+                    ⚠️ {{ insight.message }}
+                </div>
+            {% else %}
+                <div style="background: #E6F1FB; border-left: 5px solid #0C447C; padding: 12px 15px; border-radius: 6px; font-weight: 500;">
+                    💡 {{ insight.message }}
+                </div>
+            {% endif %}
+        {% else %}
+            <div style="background: #EAF3DE; padding: 12px 15px; border-radius: 6px; color: #3B6D11;">
+                ✨ Operations are steady. More data needed to generate predictions.
+            </div>
+        {% endfor %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        
+        <div class="card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #EAF3DE; color: #3B6D11; display: flex; align-items: center; justify-content: center; font-size: 24px;">💰</div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Today's Sales</div>
+                <div style="font-size: 24px; font-weight: bold; color: var(--leaf);">₱{{ "{:,.2f}".format(today_revenue) }}</div>
+            </div>
+        </div>
+
+        <div class="card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #FFF3CD; color: #856404; display: flex; align-items: center; justify-content: center; font-size: 24px;">📦</div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Orders to Fulfill</div>
+                <div style="font-size: 24px; font-weight: bold; color: #854F0B;">{{ pending_orders }}</div>
+            </div>
+        </div>
+
+        <div class="card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #E6F1FB; color: #0C447C; display: flex; align-items: center; justify-content: center; font-size: 24px;">🍯</div>
+            <div>
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Finished Jars on Shelf</div>
+                <div style="font-size: 24px; font-weight: bold; color: #0C447C;">{{ total_jars }}</div>
+            </div>
+        </div>
+
+    </div>
+
+{% elif role == 'coordinator' %}
+
+    <div class="card" style="text-align: center; padding: 40px; background: #E6F1FB; border-color: #B8DAFF; margin-bottom: 30px;">
+        <div style="font-size: 48px; margin-bottom: 15px;">🛒</div>
+        <h2 style="color: #0C447C; margin-bottom: 10px;">Coordinator Desk</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">
+            You have <strong>{{ pending_orders }}</strong> pending orders to manage.
+        </p>
+        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+            <a href="/orders" class="btn-leaf" style="width: auto; padding: 12px 24px; font-size: 15px; background: #0C447C;">📝 Manage Orders</a>
+            <a href="/customers" class="btn-leaf" style="width: auto; padding: 12px 24px; font-size: 15px; background: white; color: var(--text-main); border: 1px solid #ccc;">👥 View Customers</a>
+        </div>
+    </div>
+
+{% elif role == 'production' or role == 'packaging' %}
+    
+    <div class="card" style="text-align: center; padding: 40px; background: #EAF3DE; border-color: #C0DD97; margin-bottom: 30px;">
+        <div style="font-size: 48px; margin-bottom: 15px;">🏭</div>
+        <h2 style="color: #3B6D11; margin-bottom: 10px;">Production Floor Access</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">
+            Your focus today is maintaining inventory and cooking new batches to fulfill pending orders.
+        </p>
+        
+        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+            <a href="/production" class="btn-leaf" style="width: auto; padding: 12px 24px; font-size: 15px;">
+                ⚙️ Open Production Board
+            </a>
+            <a href="/inventory" class="btn-leaf" style="width: auto; padding: 12px 24px; font-size: 15px; background: white; color: var(--text-main); border: 1px solid #ccc;">
+                📦 Check Ingredient Stock
+            </a>
+        </div>
+    </div>
+
+{% endif %}
+<h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
     🚨 Action Needed: Low Stock Alerts
 </h3>
 
 <div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-    
-    <!-- This loop ONLY runs for items that are low on stock -->
     {% for item in ingredients if item.current_stock_usage <= item.low_stock_threshold %}
-        <div style="background: #FCEBEB; border: 1px solid #F09595; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+        <div style="background: #FCEBEB; border: 1px solid #F09595; padding: 15px; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 15px;">
             <div style="font-size: 24px;">⚠</div>
             <div>
                 <strong style="color: #A32D2D; font-size: 14px;">{{ item.name }} is running low!</strong><br>
@@ -31,10 +117,8 @@
                 </span>
             </div>
         </div>
-    
-    <!-- If the loop finds NO low stock items, it shows this happy message instead! -->
     {% else %}
-        <div style="background: #EAF3DE; border: 1px solid #C0DD97; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px;">
+        <div style="background: #EAF3DE; border: 1px solid #C0DD97; padding: 15px; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 15px;">
             <div style="font-size: 24px;">✨</div>
             <div>
                 <strong style="color: #3B6D11; font-size: 14px;">All Clear!</strong><br>
@@ -42,6 +126,5 @@
             </div>
         </div>
     {% endfor %}
-
 </div>
 {% endblock %}

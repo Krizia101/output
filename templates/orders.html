@@ -1,224 +1,154 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- NEW: Error and Success Notification Banners -->
-{% if error %}
-<div style="background-color: #FCEBEB; color: #A32D2D; padding: 12px 15px; border-radius: 8px; border: 1px solid #F09595; margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
-    <span>⚠️</span> {{ error }}
-</div>
-{% endif %}
-
-{% if success %}
-<div style="background-color: #EAF3DE; color: #3B6D11; padding: 12px 15px; border-radius: 8px; border: 1px solid #C0DD97; margin-bottom: 20px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
-    <span>✅</span> {{ success }}
-</div>
-{% endif %}
-
-<!-- ... The rest of your Orders page HTML ... -->
-<div class="page-title">
-    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🛒</div>
-    Order Management (Multi-Item)
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="page-title" style="margin-bottom: 0;">
+        <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🌱</div>
+        Order Management
+    </div>
+    
+    <button onclick="openOrderModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">
+        ➕ Create Customer Order
+    </button>
 </div>
 
-<div style="display: flex; gap: 20px;">
-    <!-- Left Side: The Advanced Order Form -->
-    <div style="flex: 1; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 520px; overflow-y: auto;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📝 Create Customer Order</h3>
+<div class="card" style="overflow-x: auto;">
+    <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-main);">Recent Sales & Status</h3>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 600px;">
+        <thead>
+            <tr style="border-bottom: 2px solid #eee; color: var(--text-muted); font-size: 14px;">
+                <th style="padding: 10px;">Order ID</th>
+                <th style="padding: 10px;">Customer</th>
+                <th style="padding: 10px;">Total Price</th>
+                <th style="padding: 10px;">Payment</th>
+                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in recent_orders %}
+            <tr style="border-bottom: 1px solid #f5f5f5;">
+                <td style="padding: 12px 10px; font-weight: bold; color: var(--text-muted);">#{{ order.id }}</td>
+                <td style="padding: 12px 10px;">{{ order.customer_name }}</td>
+                <td style="padding: 12px 10px; color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
+                <td style="padding: 12px 10px;">
+                    {{ order.payment_method }} 
+                    <span style="font-size: 12px; color: {% if order.payment_status == 'paid' %}#3B6D11{% else %}#A32D2D{% endif %};">
+                        ({{ order.payment_status }})
+                    </span>
+                </td>
+                <td style="padding: 12px 10px;">
+                    {% if order.status == 'completed' %}
+                        <span style="background: #EAF3DE; color: #3B6D11; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Completed</span>
+                    {% else %}
+                        <span style="background: #FFF3CD; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Pending</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px 10px; font-size: 12px; color: var(--text-muted);">{{ order.created_at.strftime('%b %d, %Y') if order.created_at else '' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">No recent orders found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="orderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+    
+    <div class="card" style="width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; margin: 20px; position: relative;">
+        
+        <button onclick="closeOrderModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">✖</button>
+        
+        <h2 style="margin-bottom: 20px; color: var(--leaf); text-align: center;">🛒 Create New Order</h2>
         
         <form action="/orders" method="POST">
-            <div class="form-group">
-                <label class="form-label">Customer Name</label>
-                <input type="text" name="customer_name" placeholder="e.g. Maria Santos" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;">
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <div style="flex: 1;">
-                    <label class="form-label">Payment Method</label>
-                    <select name="payment_method" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;">
-                        <option value="GCash">GCash</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                    </select>
-                </div>
-                <div style="flex: 1;">
-                    <label class="form-label">Payment Status</label>
-                    <select name="payment_status" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; background: #FFF3CD; color: #856404; font-weight: bold;">
-                        <option value="unpaid">Unpaid</option>
-                        <option value="paid">Paid in Full</option>
-                    </select>
-                </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Customer Name</label>
+                <input type="text" name="customer_name" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
             </div>
 
-            <h4 style="margin-bottom: 10px; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px;">📦 Items to Purchase</h4>
-            
-            <!-- This loop creates a number input for EVERY product in your database -->
-            {% for product in products %}
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--color-background-secondary); padding: 8px 12px; border-radius: 8px;">
-                <div>
-                    <strong style="font-size: 12px;">{{ product.name }}</strong><br>
-                    <span style="font-size: 11px; color: var(--leaf); font-weight: bold;">₱{{ product.price }} / jar</span>
-                </div>
-                <div>
-                    <input type="number" name="product_qty_{{ product.id }}" value="0" min="0" style="width: 60px; padding: 6px; border: 1px solid #ccc; border-radius: 6px; text-align: center;">
-                </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Payment Method</label>
+                <select name="payment_method" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <option value="Cash">Cash</option>
+                    <option value="GCash">GCash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
             </div>
-            {% endfor %}
+
+            <h3 style="margin-top: 10px; margin-bottom: 15px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--text-muted);">Select Products</h3>
             
-            <button type="submit" class="btn-leaf" style="margin-top: 10px; width: 100%; padding: 12px; font-weight: bold;">🛒 Confirm Order & Deduct Stock</button>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for product in products %}
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #eee;">
+                    <div>
+                        <strong style="color: var(--text-main);">{{ product.name }}</strong><br>
+                        <span style="font-size: 12px; color: var(--text-muted);">Stock: <span style="color:var(--leaf); font-weight:bold;">{{ product.current_stock_jars }}</span> | ₱{{ product.price }}</span>
+                    </div>
+                    <input type="number" name="product_qty_{{ product.id }}" value="0" min="0" max="{{ product.current_stock_jars }}" data-price="{{ product.price }}" oninput="checkStock(this, {{ product.current_stock_jars }}, '{{ product.name }}')" style="width: 70px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 16px;">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="text-align: right; margin-top: 20px; margin-bottom: 15px; padding-top: 15px; border-top: 2px dashed #ddd;">
+                <span style="font-size: 14px; color: var(--text-muted); font-weight: bold;">Live Total: </span>
+                <span id="live-total" style="font-size: 24px; font-weight: bold; color: var(--leaf);">₱0.00</span>
+            </div>
+
+            <button type="submit" class="btn-leaf" style="width: 100%; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 8px;">Confirm & Save Order</button>
         </form>
     </div>
-
-    <!-- Right Side: Recent Orders Table -->
-    <div style="flex: 2.5; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; overflow-y: auto;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="font-size: 14px; color: var(--color-text-secondary); margin: 0;">🛒 Recent Sales & Status</h3>
-            <form action="/orders" method="GET" style="display: flex; gap: 5px; margin: 0;">
-                
-                <!-- FIX: Extracted IF statement for search query value -->
-                {% if search_query %}
-                    <input type="text" name="search" placeholder="Search customer or ID..." value="{{ search_query }}" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 12px; width: 180px;">
-                {% else %}
-                    <input type="text" name="search" placeholder="Search customer or ID..." style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 12px; width: 180px;">
-                {% endif %}
-                
-                <button type="submit" class="btn-leaf" style="padding: 6px 12px; font-size: 12px;">🔍 Search</button>
-                
-                {% if search_query %}
-                    <a href="/orders" class="btn-leaf" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; text-decoration: none; padding: 6px 12px; font-size: 12px; display: flex; align-items: center;">Clear</a>
-                {% endif %}
-            </form>
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
-                    <th style="padding: 10px;">ID & Customer</th>
-                    <th style="padding: 10px;">Order Details</th>
-                    <th style="padding: 10px;">Total</th>
-                    <th style="padding: 10px;">Edit Status & Payment</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in recent_orders %}
-                
-                <!-- FIX: Extracted IF statement outside the TR tag -->
-                {% if order.status == 'cancelled' %}
-                <tr style="border-bottom: 1px solid #eee; opacity: 0.5;">
-                {% else %}
-                <tr style="border-bottom: 1px solid #eee;">
-                {% endif %}
-                
-                    <td style="padding: 10px;">
-                        <strong style="color: var(--color-text-secondary);">#{{ order.id }}</strong><br>
-                        <span style="font-weight: bold; font-size: 13px;">{{ order.customer_name }}</span><br>
-                        <span style="font-size: 10px; color: #888;">{{ order.payment_method }}</span>
-                    </td>
-                    
-                    <td style="padding: 10px; line-height: 1.4;">{{ order.item_details | safe }}</td>
-                    
-                    <td style="padding: 10px; font-weight: bold; color: var(--leaf); font-size: 13px;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
-                    
-                    <td style="padding: 10px;">
-                        <form action="/orders/update" method="POST" style="margin: 0; display: flex; flex-direction: column; gap: 4px;">
-                            <input type="hidden" name="order_id" value="{{ order.id }}">
-                            
-                            <!-- FIX: Complete extraction of Payment Status Logic -->
-                            {% if order.status == 'cancelled' or (role != 'admin' and role != 'coordinator') %}
-                                <select name="payment_status" disabled style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px;">
-                                    <option value="unpaid">❗ Unpaid</option>
-                                    <option value="paid">✅ Paid</option>
-                                </select>
-                            {% else %}
-                                {% if order.payment_status == 'unpaid' %}
-                                    <select name="payment_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #A32D2D; background: #FCEBEB;">
-                                        <option value="unpaid" selected>❗ Unpaid</option>
-                                        <option value="paid">✅ Paid</option>
-                                    </select>
-                                {% else %}
-                                    <select name="payment_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #3B6D11; background: #EAF3DE;">
-                                        <option value="unpaid">❗ Unpaid</option>
-                                        <option value="paid" selected>✅ Paid</option>
-                                    </select>
-                                {% endif %}
-                            {% endif %}
-
-                            <!-- FIX: Complete extraction of Order Status Logic -->
-                            {% if order.status == 'cancelled' or (role != 'admin' and role != 'coordinator') %}
-                                <select name="new_status" disabled style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px;">
-                            {% else %}
-                                {% if order.status == 'pending' %}
-                                    <select name="new_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #854F0B; background: #FAEEDA;">
-                                {% elif order.status == 'confirmed' %}
-                                    <select name="new_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #0C447C; background: #E6F1FB;">
-                                {% elif order.status == 'packaging' %}
-                                    <select name="new_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #3C3489; background: #EEEDFE;">
-                                {% elif order.status == 'completed' %}
-                                    <select name="new_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px; color: #3B6D11; background: #EAF3DE;">
-                                {% else %}
-                                    <select name="new_status" onchange="this.form.submit()" style="padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 11px;">
-                                {% endif %}
-                            {% endif %}
-                                
-                                {% if order.status == 'pending' %}
-                                    <option value="pending" selected>Pending</option>
-                                {% else %}
-                                    <option value="pending">Pending</option>
-                                {% endif %}
-                                
-                                {% if order.status == 'confirmed' %}
-                                    <option value="confirmed" selected>Confirmed</option>
-                                {% else %}
-                                    <option value="confirmed">Confirmed</option>
-                                {% endif %}
-                                
-                                {% if order.status == 'packaging' %}
-                                    <option value="packaging" selected>Packaging</option>
-                                {% else %}
-                                    <option value="packaging">Packaging</option>
-                                {% endif %}
-                                
-                                {% if order.status == 'completed' %}
-                                    <option value="completed" selected>Completed</option>
-                                {% else %}
-                                    <option value="completed">Completed</option>
-                                {% endif %}
-                                
-                                {% if order.status == 'cancelled' %}
-                                    <option value="cancelled" selected>❌ Cancel & Undo</option>
-                                {% else %}
-                                    <option value="cancelled">❌ Cancel & Undo</option>
-                                {% endif %}
-                                
-                                </select>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4" style="padding: 10px; text-align: center; color: #666;">No orders found.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <!-- Pagination Controls for Orders -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-            
-            {% if current_page > 1 %}
-                <a href="/orders?page={{ current_page - 1 }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn-leaf" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">&larr; Previous</a>
-            {% else %}
-                <span style="color: #ccc; cursor: not-allowed; padding: 6px 12px; border: 1px solid #eee; border-radius: 8px; font-size: 12px;">&larr; Previous</span>
-            {% endif %}
-            
-            <span style="font-size: 12px; color: var(--color-text-secondary); font-weight: bold;">
-                Page {{ current_page }} of {{ total_pages }}
-            </span>
-            
-            {% if current_page < total_pages %}
-                <a href="/orders?page={{ current_page + 1 }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn-leaf" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">Next &rarr;</a>
-            {% else %}
-                <span style="color: #ccc; cursor: not-allowed; padding: 6px 12px; border: 1px solid #eee; border-radius: 8px; font-size: 12px;">Next &rarr;</span>
-            {% endif %}
-            
-        </div>
-    </div>
 </div>
+
+<script>
+    // --- MODAL JAVASCRIPT CONTROLS ---
+    function openOrderModal() {
+        document.getElementById('orderModal').style.display = 'flex';
+    }
+
+    function closeOrderModal() {
+        document.getElementById('orderModal').style.display = 'none';
+    }
+
+    // Close modal if user clicks outside the white box
+    window.onclick = function(event) {
+        const modal = document.getElementById('orderModal');
+        if (event.target == modal) {
+            closeOrderModal();
+        }
+    }
+
+    // --- LIVE CALCULATOR & STOCK CHECK ---
+    function checkStock(inputElement, maxStock, productName) {
+        let requestedQty = parseInt(inputElement.value);
+        if (requestedQty > maxStock) {
+            alert("⚠️ Stock Shortage!\n\nYou only have " + maxStock + " jars of '" + productName + "' available on the shelf.");
+            inputElement.value = maxStock;
+        }
+        calculateTotal(); 
+    }
+
+    function calculateTotal() {
+        const productInputs = document.querySelectorAll('input[name^="product_qty_"]');
+        const totalDisplay = document.getElementById('live-total');
+        let currentTotal = 0;
+
+        productInputs.forEach(input => {
+            let qty = parseInt(input.value) || 0;
+            let price = parseFloat(input.getAttribute('data-price')) || 0;
+            currentTotal += (qty * price);
+        });
+
+        totalDisplay.innerText = "₱" + currentTotal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const productInputs = document.querySelectorAll('input[name^="product_qty_"]');
+        productInputs.forEach(input => {
+            input.addEventListener('input', calculateTotal);
+        });
+    });
+</script>
 {% endblock %}

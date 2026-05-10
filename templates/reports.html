@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <div class="page-title">
     <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">📊</div>
-    Business Reports
+    Business Reports & Analytics
 </div>
 
-<!-- Tab Navigation & Export Buttons -->
 <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:15px;">
     
     <div style="display:flex; gap:10px;">
@@ -15,20 +16,22 @@
         <button onclick="switchTab('payment')" id="btn-payment" class="btn-leaf" style="padding: 8px 16px; background:var(--color-background-secondary); color:var(--color-text-primary); border:1px solid #ccc;">Payment Breakdown</button>
     </div>
     
-    <!-- NEW: The Export Button -->
     <div>
         <a href="/reports/export" class="btn-leaf" style="display: inline-block; background: #0C447C; text-decoration: none;">
             📥 Download Full Sales Report (CSV)
         </a>
     </div>
-
 </div>
 
 <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd;">
     
-    <!-- WEEKLY TAB CONTENT -->
     <div id="tab-weekly" style="display: block;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📅 Weekly Summaries</h3>
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📅 Weekly Revenue & Volume</h3>
+        
+        <div style="position: relative; height: 300px; margin-bottom: 30px;">
+            <canvas id="weeklyChart"></canvas>
+        </div>
+
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
             <thead>
                 <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
@@ -53,9 +56,13 @@
         </table>
     </div>
 
-    <!-- MONTHLY TAB CONTENT -->
     <div id="tab-monthly" style="display: none;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📆 Monthly Summaries</h3>
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📆 Monthly Growth Trend</h3>
+        
+        <div style="position: relative; height: 300px; margin-bottom: 30px;">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
             <thead>
                 <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
@@ -78,9 +85,13 @@
         </table>
     </div>
 
-    <!-- PAYMENT TAB CONTENT -->
     <div id="tab-payment" style="display: none;">
         <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">💳 Payment Method Breakdown</h3>
+        
+        <div style="position: relative; height: 300px; margin-bottom: 30px; display: flex; justify-content: center;">
+            <canvas id="paymentChart" style="max-width: 400px;"></canvas>
+        </div>
+
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
             <thead>
                 <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
@@ -106,15 +117,18 @@
     </div>
 </div>
 
-<!-- JavaScript to handle clicking the tabs -->
 <script>
+    // 1. Declare chart variables so the tabs can resize them
+    let chartWeekly, chartMonthly, chartPayment;
+
+    // 2. Tab Switching Logic
     function switchTab(tabId) {
-        // 1. Hide all tab content
+        // Hide all
         document.getElementById('tab-weekly').style.display = 'none';
         document.getElementById('tab-monthly').style.display = 'none';
         document.getElementById('tab-payment').style.display = 'none';
         
-        // 2. Reset all buttons to look unselected (gray)
+        // Reset buttons
         let buttons = ['btn-weekly', 'btn-monthly', 'btn-payment'];
         buttons.forEach(function(btn) {
             document.getElementById(btn).style.background = 'var(--color-background-secondary)';
@@ -122,11 +136,95 @@
             document.getElementById(btn).style.borderColor = '#ccc';
         });
         
-        // 3. Show the selected tab content and make its button look selected (green)
+        // Show active
         document.getElementById('tab-' + tabId).style.display = 'block';
         document.getElementById('btn-' + tabId).style.background = 'var(--leaf)';
         document.getElementById('btn-' + tabId).style.color = 'white';
         document.getElementById('btn-' + tabId).style.borderColor = 'var(--leaf)';
+
+        // Chart.js bug fix: Force the chart to resize itself when a hidden tab is opened
+        if (tabId === 'weekly' && chartWeekly) chartWeekly.resize();
+        if (tabId === 'monthly' && chartMonthly) chartMonthly.resize();
+        if (tabId === 'payment' && chartPayment) chartPayment.resize();
     }
+
+    // 3. Render Charts after the page loads
+    window.addEventListener('DOMContentLoaded', (event) => {
+        
+        // --- WEEKLY BAR CHART ---
+        // Notice we use '|reverse' to read the data chronologically (left to right)
+        const weeklyLabels = [{% for row in weekly|reverse %}"{{ row.period }}",{% endfor %}];
+        const weeklyRevenue = [{% for row in weekly|reverse %}{{ row.total_revenue }},{% endfor %}];
+        
+        const ctxWeekly = document.getElementById('weeklyChart').getContext('2d');
+        chartWeekly = new Chart(ctxWeekly, {
+            type: 'bar',
+            data: {
+                labels: weeklyLabels,
+                datasets: [{
+                    label: 'Revenue (₱)',
+                    data: weeklyRevenue,
+                    backgroundColor: '#639922',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // --- MONTHLY LINE CHART ---
+        const monthlyLabels = [{% for row in monthly|reverse %}"{{ row.period }}",{% endfor %}];
+        const monthlyRevenue = [{% for row in monthly|reverse %}{{ row.total_revenue }},{% endfor %}];
+        
+        const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+        chartMonthly = new Chart(ctxMonthly, {
+            type: 'line',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: 'Revenue (₱)',
+                    data: monthlyRevenue,
+                    borderColor: '#0C447C',
+                    backgroundColor: 'rgba(12, 68, 124, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3 // Adds a beautiful curve to the line
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // --- PAYMENT DOUGHNUT CHART ---
+        const paymentLabels = [{% for row in payments %}"{{ row.payment_method }}",{% endfor %}];
+        const paymentRevenue = [{% for row in payments %}{{ row.total_revenue }},{% endfor %}];
+        
+        const ctxPayment = document.getElementById('paymentChart').getContext('2d');
+        chartPayment = new Chart(ctxPayment, {
+            type: 'doughnut',
+            data: {
+                labels: paymentLabels,
+                datasets: [{
+                    data: paymentRevenue,
+                    backgroundColor: ['#3B6D11', '#0C447C', '#F5A623', '#854F0B', '#3C3489'],
+                    borderWidth: 2,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%', // Makes the center hole larger
+                plugins: { legend: { position: 'right' } }
+            }
+        });
+
+    });
 </script>
 {% endblock %}
