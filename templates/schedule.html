@@ -1,83 +1,64 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if success %}
-<div class="card" style="background-color: #EAF3DE; border-color: #C0DD97; color: #3B6D11; padding: 12px 15px; margin-bottom: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-    <span>✅</span> {{ success }}
-</div>
-{% endif %}
+<div class="page-title" style="margin-bottom: 15px;"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🗓️</div> Production Schedule</div>
 
-<div class="page-title" style="margin-bottom: 20px;">
-    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🗓️</div>
-    Production Schedule
-</div>
-
-<div class="responsive-flex">
-    
-    <div class="card" style="flex: 1;">
+<div class="fixed-grid">
+    <div class="fixed-card" style="flex: 1;">
         <h3 style="margin-bottom: 15px; font-size: 14px; color: #854F0B;">⏳ Work In Progress (WIP)</h3>
-        <div style="overflow-x: auto; width: 100%;">
+        <div class="table-wrapper">
             <table class="table-custom">
-                <thead>
-                    <tr style="background-color: #FFF3CD;">
-                        <th>Started</th>
-                        <th>Variant</th>
-                        <th>Amount</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
+                <thead><tr style="background-color: #FFF3CD;"><th>Variant</th><th>Amount</th><th>Action</th></tr></thead>
                 <tbody>
                     {% for batch in wip_batches %}
                     <tr>
-                        <td style="color: var(--text-muted); font-size: 11px;">
-                            {{ batch.created_at.strftime('%b %d, %Y') }}<br>{{ batch.created_at.strftime('%I:%M %p') }}
-                        </td>
-                        <td style="font-weight: 600; color: var(--text-main);">{{ batch.product_name }}</td>
+                        <td style="font-weight: 600;">{{ batch.product_name }}</td>
                         <td style="color: var(--leaf); font-weight: bold;">{{ batch.jars_produced }} jars</td>
                         <td>
-                            <form action="/production/update" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure this batch of {{ batch.jars_produced }} jars of {{ batch.product_name }} is fully finished? \n\nClicking OK will move this batch to Completed and add the jars to your inventory shelf.');">
+                            <form action="/production/update" method="POST" style="margin: 0;">
                                 <input type="hidden" name="batch_id" value="{{ batch.id }}">
-                                <button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;">
-                                    ✅ Mark Completed
-                                </button>
+                                <button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">✅ Done</button>
                             </form>
                         </td>
                     </tr>
-                    {% else %}
-                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 15px;">No active batches right now.</td></tr>
                     {% endfor %}
+                    {% for i in range(per_page - wip_batches|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>
+        <div class="pagination-bar">
+            {% if current_page_w > 1 %} <a href="?page_w={{ current_page_w - 1 }}&page_c={{ current_page_c }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_w }} of {{ total_pages_w }}</span>
+            {% if current_page_w < total_pages_w %} <a href="?page_w={{ current_page_w + 1 }}&page_c={{ current_page_c }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+        </div>
     </div>
 
-    <div class="card" style="flex: 1;">
+    <div class="fixed-card" style="flex: 1;">
         <h3 style="margin-bottom: 15px; font-size: 14px; color: #3B6D11;">✅ Recently Completed</h3>
-        <div style="overflow-x: auto; width: 100%;">
+        <div class="table-wrapper">
             <table class="table-custom">
-                <thead>
-                    <tr style="background-color: #EAF3DE;">
-                        <th>Finished</th>
-                        <th>Variant</th>
-                        <th>Added to Shelf</th>
-                    </tr>
-                </thead>
+                <thead><tr style="background-color: #EAF3DE;"><th>Finished</th><th>Variant</th><th>Added</th></tr></thead>
                 <tbody>
                     {% for batch in completed_batches %}
                     <tr>
-                        <td style="color: var(--text-muted); font-size: 11px;">
-                            {{ batch.created_at.strftime('%b %d, %Y') }}<br>{{ batch.created_at.strftime('%I:%M %p') }}
-                        </td>
-                        <td style="font-weight: 600; color: var(--text-main);">{{ batch.product_name }}</td>
-                        <td style="color: var(--leaf); font-weight: bold;">+{{ batch.jars_produced }} jars</td>
+                        <td style="font-size: 11px; color: var(--text-muted);">{{ batch.created_at.strftime('%b %d %I:%M %p') }}</td>
+                        <td style="font-weight: 600;">{{ batch.product_name }}</td>
+                        <td style="color: var(--leaf); font-weight: bold;">+{{ batch.jars_produced }}</td>
                     </tr>
-                    {% else %}
-                    <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 15px;">No completed batches yet.</td></tr>
                     {% endfor %}
+                    {% for i in range(per_page - completed_batches|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>
+        <div class="pagination-bar">
+            {% if current_page_c > 1 %} <a href="?page_w={{ current_page_w }}&page_c={{ current_page_c - 1 }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_c }} of {{ total_pages_c }}</span>
+            {% if current_page_c < total_pages_c %} <a href="?page_w={{ current_page_w }}&page_c={{ current_page_c + 1 }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+        </div>
     </div>
-
 </div>
 {% endblock %}

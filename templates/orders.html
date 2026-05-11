@@ -1,154 +1,89 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <div class="page-title" style="margin-bottom: 0;">
-        <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🌱</div>
-        Order Management
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+    <div class="page-title" style="margin-bottom: 0;"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🛒</div> Order Management</div>
+    <button onclick="openOrderModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">➕ Create Customer Order</button>
+</div>
+
+<div class="fixed-grid">
+    <div class="fixed-card" style="flex: 1;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: #854F0B;">⏳ Pending Queue</h3>
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead><tr style="background-color: #FFF3CD;"><th style="width: 35%;">Customer</th><th style="width: 30%;">Total</th><th style="width: 35%;">Action</th></tr></thead>
+                <tbody>
+                    {% for order in pending_orders %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ order.customer_name }}</td>
+                        <td style="color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="return confirm('Mark this order as completed and paid?');">
+                                    <input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" name="new_status" value="completed"><input type="hidden" name="payment_status" value="Paid"><button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">✅ Done</button>
+                                </form>
+                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="return confirm('Cancel this order and return stock?');">
+                                    <input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" name="new_status" value="cancelled"><input type="hidden" name="payment_status" value="Unpaid"><button type="submit" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">❌</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% for i in range(per_page - pending_orders|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-bar">
+            {% if current_page_p > 1 %} <a href="?page_p={{ current_page_p - 1 }}&page_c={{ current_page_c }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_p }} of {{ total_pages_p }}</span>
+            {% if current_page_p < total_pages_p %} <a href="?page_p={{ current_page_p + 1 }}&page_c={{ current_page_c }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+        </div>
     </div>
-    
-    <button onclick="openOrderModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">
-        ➕ Create Customer Order
-    </button>
-</div>
 
-<div class="card" style="overflow-x: auto;">
-    <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-main);">Recent Sales & Status</h3>
-    <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 600px;">
-        <thead>
-            <tr style="border-bottom: 2px solid #eee; color: var(--text-muted); font-size: 14px;">
-                <th style="padding: 10px;">Order ID</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Total Price</th>
-                <th style="padding: 10px;">Payment</th>
-                <th style="padding: 10px;">Status</th>
-                <th style="padding: 10px;">Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in recent_orders %}
-            <tr style="border-bottom: 1px solid #f5f5f5;">
-                <td style="padding: 12px 10px; font-weight: bold; color: var(--text-muted);">#{{ order.id }}</td>
-                <td style="padding: 12px 10px;">{{ order.customer_name }}</td>
-                <td style="padding: 12px 10px; color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
-                <td style="padding: 12px 10px;">
-                    {{ order.payment_method }} 
-                    <span style="font-size: 12px; color: {% if order.payment_status == 'paid' %}#3B6D11{% else %}#A32D2D{% endif %};">
-                        ({{ order.payment_status }})
-                    </span>
-                </td>
-                <td style="padding: 12px 10px;">
-                    {% if order.status == 'completed' %}
-                        <span style="background: #EAF3DE; color: #3B6D11; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Completed</span>
-                    {% else %}
-                        <span style="background: #FFF3CD; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Pending</span>
-                    {% endif %}
-                </td>
-                <td style="padding: 12px 10px; font-size: 12px; color: var(--text-muted);">{{ order.created_at.strftime('%b %d, %Y') if order.created_at else '' }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">No recent orders found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<div id="orderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
-    
-    <div class="card" style="width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; margin: 20px; position: relative;">
-        
-        <button onclick="closeOrderModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">✖</button>
-        
-        <h2 style="margin-bottom: 20px; color: var(--leaf); text-align: center;">🛒 Create New Order</h2>
-        
-        <form action="/orders" method="POST">
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Customer Name</label>
-                <input type="text" name="customer_name" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Payment Method</label>
-                <select name="payment_method" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
-                    <option value="Cash">Cash</option>
-                    <option value="GCash">GCash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-            </div>
-
-            <h3 style="margin-top: 10px; margin-bottom: 15px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--text-muted);">Select Products</h3>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                {% for product in products %}
-                <div style="display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #eee;">
-                    <div>
-                        <strong style="color: var(--text-main);">{{ product.name }}</strong><br>
-                        <span style="font-size: 12px; color: var(--text-muted);">Stock: <span style="color:var(--leaf); font-weight:bold;">{{ product.current_stock_jars }}</span> | ₱{{ product.price }}</span>
-                    </div>
-                    <input type="number" name="product_qty_{{ product.id }}" value="0" min="0" max="{{ product.current_stock_jars }}" data-price="{{ product.price }}" oninput="checkStock(this, {{ product.current_stock_jars }}, '{{ product.name }}')" style="width: 70px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 16px;">
-                </div>
-                {% endfor %}
-            </div>
-
-            <div style="text-align: right; margin-top: 20px; margin-bottom: 15px; padding-top: 15px; border-top: 2px dashed #ddd;">
-                <span style="font-size: 14px; color: var(--text-muted); font-weight: bold;">Live Total: </span>
-                <span id="live-total" style="font-size: 24px; font-weight: bold; color: var(--leaf);">₱0.00</span>
-            </div>
-
-            <button type="submit" class="btn-leaf" style="width: 100%; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 8px;">Confirm & Save Order</button>
-        </form>
+    <div class="fixed-card" style="flex: 1.2;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: #3B6D11;">✅ Completed Orders</h3>
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead><tr style="background-color: #EAF3DE;"><th style="width: 20%;">Date</th><th style="width: 40%;">Customer</th><th style="width: 20%;">Total</th><th style="width: 20%;">Method</th></tr></thead>
+                <tbody>
+                    {% for order in completed_orders %}
+                    <tr>
+                        <td style="font-size: 11px; color: var(--text-muted);">{{ order.created_at.strftime('%b %d') }}</td>
+                        <td style="font-weight: 500;">{{ order.customer_name }}</td>
+                        <td style="color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
+                        <td><span style="background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">{{ order.payment_method }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    {% for i in range(per_page - completed_orders|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-bar">
+            {% if current_page_c > 1 %} <a href="?page_p={{ current_page_p }}&page_c={{ current_page_c - 1 }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_c }} of {{ total_pages_c }}</span>
+            {% if current_page_c < total_pages_c %} <a href="?page_p={{ current_page_p }}&page_c={{ current_page_c + 1 }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+        </div>
     </div>
 </div>
 
 <script>
-    // --- MODAL JAVASCRIPT CONTROLS ---
-    function openOrderModal() {
-        document.getElementById('orderModal').style.display = 'flex';
-    }
-
-    function closeOrderModal() {
-        document.getElementById('orderModal').style.display = 'none';
-    }
-
-    // Close modal if user clicks outside the white box
-    window.onclick = function(event) {
-        const modal = document.getElementById('orderModal');
-        if (event.target == modal) {
-            closeOrderModal();
-        }
-    }
-
-    // --- LIVE CALCULATOR & STOCK CHECK ---
+    function openOrderModal() { document.getElementById('orderModal').style.display = 'flex'; }
+    function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
+    window.onclick = function(event) { if (event.target == document.getElementById('orderModal')) closeOrderModal(); }
     function checkStock(inputElement, maxStock, productName) {
         let requestedQty = parseInt(inputElement.value);
-        if (requestedQty > maxStock) {
-            alert("⚠️ Stock Shortage!\n\nYou only have " + maxStock + " jars of '" + productName + "' available on the shelf.");
-            inputElement.value = maxStock;
-        }
+        if (requestedQty > maxStock) { alert("⚠️ Stock Shortage!\n\nYou only have " + maxStock + " jars of '" + productName + "' available."); inputElement.value = maxStock; }
         calculateTotal(); 
     }
-
     function calculateTotal() {
-        const productInputs = document.querySelectorAll('input[name^="product_qty_"]');
-        const totalDisplay = document.getElementById('live-total');
         let currentTotal = 0;
-
-        productInputs.forEach(input => {
-            let qty = parseInt(input.value) || 0;
-            let price = parseFloat(input.getAttribute('data-price')) || 0;
-            currentTotal += (qty * price);
-        });
-
-        totalDisplay.innerText = "₱" + currentTotal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.querySelectorAll('input[name^="product_qty_"]').forEach(input => { currentTotal += ((parseInt(input.value) || 0) * (parseFloat(input.getAttribute('data-price')) || 0)); });
+        document.getElementById('live-total').innerText = "₱" + currentTotal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const productInputs = document.querySelectorAll('input[name^="product_qty_"]');
-        productInputs.forEach(input => {
-            input.addEventListener('input', calculateTotal);
-        });
-    });
+    document.addEventListener("DOMContentLoaded", () => document.querySelectorAll('input[name^="product_qty_"]').forEach(input => input.addEventListener('input', calculateTotal)));
 </script>
 {% endblock %}

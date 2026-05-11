@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block layout %}
-<div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--color-bg-main); padding: 20px;">
+<div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--color-bg-main); width: 100%; overflow: hidden;">
     
-    <div class="card" style="width: 100%; max-width: 360px; text-align: center; box-shadow: 0 10px 30px rgba(59, 109, 17, 0.1);">
+    <div class="fixed-card" style="flex: none; width: 100%; max-width: 360px; height: auto; text-align: center; padding: 30px;">
         
         <div class="leaf-logo" style="width: 54px; height: 54px; background: var(--leaf); margin: 0 auto 15px; font-size: 24px; color: white;">🌿</div>
         
@@ -28,7 +28,7 @@
                 <input type="password" name="password" placeholder="••••••••" required style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: var(--radius-md); font-size: 14px; outline-color: var(--leaf);">
             </div>
             
-            <button type="submit" class="btn-leaf" style="padding: 12px; font-size: 14px; margin-top: 5px;">Sign In</button>
+            <button type="submit" class="btn-leaf" style="padding: 12px; font-size: 14px; margin-top: 5px; width: 100%;">Sign In</button>
         </form>
     </div>
     

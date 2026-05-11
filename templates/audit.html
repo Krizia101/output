@@ -1,95 +1,60 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="page-title">
-    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">📋</div>
-    Audit Log & Login History
-</div>
+<div class="page-title"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">📋</div> Audit Log & Login History</div>
 
-<div style="display: flex; gap: 20px;">
-    
-    <!-- Left Side: System Activity -->
-    <div style="flex: 2; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 600px; overflow-y: auto;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">📝 System Activity Log</h3>
-        
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
-                    <th style="padding: 10px;">Date & Time</th>
-                    <th style="padding: 10px;">User</th>
-                    <th style="padding: 10px;">Action Type</th>
-                    <th style="padding: 10px;">Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; color: var(--color-text-secondary); font-size: 11px;">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td style="padding: 10px; font-weight: bold;">{{ log.username }}</td>
-                    <td style="padding: 10px;">
-                        <span style="background: var(--color-background-secondary); padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">{{ log.action_type }}</span>
-                    </td>
-                    <td style="padding: 10px;">{{ log.description }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <!-- NEW: Pagination Controls -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-            
-            <!-- Previous Button Logic -->
-            {% if current_page > 1 %}
-                <a href="/audit?page={{ current_page - 1 }}" class="btn-leaf" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">&larr; Previous</a>
-            {% else %}
-                <span style="color: #ccc; cursor: not-allowed; padding: 6px 12px; border: 1px solid #eee; border-radius: 8px; font-size: 12px;">&larr; Previous</span>
-            {% endif %}
-            
-            <!-- Page Counter -->
-            <span style="font-size: 12px; color: var(--color-text-secondary); font-weight: bold;">
-                Page {{ current_page }} of {{ total_pages }}
-            </span>
-            
-            <!-- Next Button Logic -->
-            {% if current_page < total_pages %}
-                <a href="/audit?page={{ current_page + 1 }}" class="btn-leaf" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">Next &rarr;</a>
-            {% else %}
-                <span style="color: #ccc; cursor: not-allowed; padding: 6px 12px; border: 1px solid #eee; border-radius: 8px; font-size: 12px;">Next &rarr;</span>
-            {% endif %}
-            
+<div class="fixed-grid">
+    <div class="fixed-card" style="flex: 2;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">📝 System Activity Log</h3>
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead><tr><th>Time</th><th>User</th><th>Action Type</th><th style="width:50%;">Description</th></tr></thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="font-size: 11px;">{{ log.created_at.strftime('%m/%d %H:%M') }}</td>
+                        <td style="font-weight: bold;">{{ log.username }}</td>
+                        <td><span style="background: var(--color-background-secondary); padding: 3px 8px; border-radius: 10px; font-size: 11px;">{{ log.action_type }}</span></td>
+                        <td style="font-size: 11px;">{{ log.description }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for i in range(per_page - logs|length) %} <tr><td colspan="4" style="color: transparent;">-</td></tr> {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-bar">
+            {% if current_page_a > 1 %} <a href="?page_a={{ current_page_a - 1 }}&page_l={{ current_page_l }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_a }} of {{ total_pages_a }}</span>
+            {% if current_page_a < total_pages_a %} <a href="?page_a={{ current_page_a + 1 }}&page_l={{ current_page_l }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
         </div>
     </div>
 
-    <!-- Right Side: Login History -->
-    <div style="flex: 1; background: white; padding: 20px; border-radius: 12px; border: 1px solid #ddd; max-height: 600px; overflow-y: auto;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--color-text-secondary);">🔐 Access History</h3>
-        
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #eee; background-color: var(--color-background-secondary);">
-                    <th style="padding: 10px;">User</th>
-                    <th style="padding: 10px;">Event</th>
-                    <th style="padding: 10px;">Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in logins %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px; font-weight: bold;">{{ entry.username }}</td>
-                    <td style="padding: 10px;">
-                        <!-- Highlight failures in red -->
-                        {% if entry.action == 'failed_attempt' %}
-                            <span style="color: #A32D2D; font-weight: bold;">Failed</span>
-                        {% elif entry.action == 'login' %}
-                            <span style="color: #3B6D11;">Login</span>
-                        {% else %}
-                            <span style="color: #666;">Logout</span>
-                        {% endif %}
-                    </td>
-                    <td style="padding: 10px; color: var(--color-text-secondary); font-size: 10px;">{{ entry.created_at.strftime('%m/%d %H:%M') }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="fixed-card" style="flex: 1;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">🔐 Access History</h3>
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead><tr><th>User</th><th>Event</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for entry in logins %}
+                    <tr>
+                        <td style="font-weight: bold;">{{ entry.username }}</td>
+                        <td>{% if entry.action == 'failed_attempt' %}<span style="color:#A32D2D;">Failed</span>{% elif entry.action == 'login' %}<span style="color:#3B6D11;">Login</span>{% else %}<span style="color:#666;">Logout</span>{% endif %}</td>
+                        <td style="font-size: 11px;">{{ entry.created_at.strftime('%m/%d %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for i in range(per_page - logins|length) %} <tr><td colspan="3" style="color: transparent;">-</td></tr> {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-bar">
+            {% if current_page_l > 1 %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l - 1 }}" class="btn-leaf">&larr; Prev</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_l }} of {{ total_pages_l }}</span>
+            {% if current_page_l < total_pages_l %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l + 1 }}" class="btn-leaf">Next &rarr;</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
