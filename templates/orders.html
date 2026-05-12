@@ -19,11 +19,17 @@
                         <td style="color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
-                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="return confirm('Mark this order as completed and paid?');">
-                                    <input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" name="new_status" value="completed"><input type="hidden" name="payment_status" value="Paid"><button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">✅ Done</button>
+                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="showConfirmModal(event, 'Mark this order as completed and paid?');">
+                                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                                    <input type="hidden" name="new_status" value="completed">
+                                    <input type="hidden" name="payment_status" value="Paid">
+                                    <button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">✅ Done</button>
                                 </form>
-                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="return confirm('Cancel this order and return stock?');">
-                                    <input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" name="new_status" value="cancelled"><input type="hidden" name="payment_status" value="Unpaid"><button type="submit" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">❌</button>
+                                <form action="/orders/update" method="POST" style="margin: 0;" onsubmit="showConfirmModal(event, 'Cancel this order and return stock?', true);">
+                                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                                    <input type="hidden" name="new_status" value="cancelled">
+                                    <input type="hidden" name="payment_status" value="Unpaid">
+                                    <button type="submit" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">❌</button>
                                 </form>
                             </div>
                         </td>
@@ -70,10 +76,60 @@
     </div>
 </div>
 
+<div id="orderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 36, 21, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+    <div class="card modal-box" style="width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto;">
+        
+        <div class="modal-header">
+            <h3 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 12px;">
+                <div style="background: var(--leaf-light); color: var(--leaf); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">🛒</div>
+                Create New Order
+            </h3>
+            <button type="button" onclick="closeOrderModal()" class="btn-modal-close">✖</button>
+        </div>
+        
+        <form action="/orders" method="POST">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div style="flex: 2;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Customer Name</label>
+                    <input type="text" name="customer_name" class="modern-input" placeholder="e.g. Juan Dela Cruz" required>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Payment</label>
+                    <select name="payment_method" class="modern-input" style="padding-right: 10px;">
+                        <option value="Cash">Cash</option><option value="GCash">GCash</option><option value="Bank Transfer">Bank</option>
+                    </select>
+                </div>
+            </div>
+
+            <label style="display: block; margin-bottom: 10px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Select Products</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; background: #fafbfc; border: 1px solid #eee; border-radius: var(--radius-md); padding: 15px;">
+                {% for product in products %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: {% if not loop.last %}10px{% else %}0{% endif %}; border-bottom: {% if not loop.last %}1px solid #eee{% else %}none{% endif %};">
+                    <div>
+                        <strong style="color: var(--text-main); font-size: 14px;">{{ product.name }}</strong><br>
+                        <span style="font-size: 11px; color: var(--text-muted);">In Stock: <span style="color:var(--leaf); font-weight:bold;">{{ product.current_stock_jars }}</span> | ₱{{ product.price }} / jar</span>
+                    </div>
+                    <input type="number" name="product_qty_{{ product.id }}" value="0" min="0" max="{{ product.current_stock_jars }}" data-price="{{ product.price }}" oninput="checkStock(this, {{ product.current_stock_jars }}, '{{ product.name }}')" class="modern-input" style="width: 80px; text-align: center; font-weight: bold;">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="text-align: right; margin-top: 15px; padding-top: 15px;">
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-right: 10px;">Live Total: </span>
+                <span id="live-total" style="font-size: 28px; font-weight: 900; color: var(--leaf);">₱0.00</span>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" onclick="closeOrderModal()">Cancel</button>
+                <button type="submit" class="btn-leaf" style="width: auto; padding: 10px 24px;">Confirm & Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function openOrderModal() { document.getElementById('orderModal').style.display = 'flex'; }
     function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
-    window.onclick = function(event) { if (event.target == document.getElementById('orderModal')) closeOrderModal(); }
     function checkStock(inputElement, maxStock, productName) {
         let requestedQty = parseInt(inputElement.value);
         if (requestedQty > maxStock) { alert("⚠️ Stock Shortage!\n\nYou only have " + maxStock + " jars of '" + productName + "' available."); inputElement.value = maxStock; }

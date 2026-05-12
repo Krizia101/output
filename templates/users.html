@@ -2,9 +2,7 @@
 
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
-    <div class="page-title" style="margin: 0;">
-        <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">👥</div> User Management
-    </div>
+    <div class="page-title" style="margin: 0;"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">👥</div> User Management</div>
     <button onclick="openUserModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">+ Add New User</button>
 </div>
 
@@ -12,14 +10,7 @@
     <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">🛡️ Active Team Members</h3>
     <div class="table-wrapper">
         <table class="table-custom">
-            <thead>
-                <tr>
-                    <th style="width: 25%;">User</th>
-                    <th style="width: 30%;">Full Name</th>
-                    <th style="width: 30%;">Role</th>
-                    <th style="width: 15%;">Action</th>
-                </tr>
-            </thead>
+            <thead><tr><th style="width: 25%;">User</th><th style="width: 30%;">Full Name</th><th style="width: 30%;">Role</th><th style="width: 15%;">Action</th></tr></thead>
             <tbody>
                 {% for user in users %}
                 <tr>
@@ -28,81 +19,70 @@
                     <td><span style="background: #E6F1FB; color: #0C447C; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">{{ user.role | title }}</span></td>
                     <td>
                         {% if user.username != current_user %}
-                        <form action="/users/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to remove this user?');">
+                        <form action="/users/delete" method="POST" style="margin: 0;" onsubmit="showConfirmModal(event, 'Are you sure you want to remove {{ user.username }}?\n\nThey will immediately lose access to the system.', true);">
                             <input type="hidden" name="user_id" value="{{ user.id }}">
-                            <button type="submit" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;">Remove</button>
+                            <button type="submit" class="btn-outline" style="background: #FCEBEB; color: #A32D2D; border: 1px solid #F09595; padding: 6px 12px; font-size: 11px;">Remove</button>
                         </form>
-                        {% else %}
-                        <span style="font-size: 11px; color: #999;">(You)</span>
-                        {% endif %}
+                        {% else %}<span style="font-size: 11px; color: #999;">(You)</span>{% endif %}
                     </td>
                 </tr>
                 {% endfor %}
-                {% for i in range(per_page - users|length) %}
-                <tr><td colspan="4" style="color: transparent;">-</td></tr>
-                {% endfor %}
+                {% for i in range(per_page - users|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
     <div class="pagination-bar" style="visibility: hidden;"></div>
 </div>
 
-<div id="userModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div class="card" style="width: 100%; max-width: 400px; margin: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 18px; color: var(--leaf); display: flex; align-items: center; gap: 8px;">➕ Add New User</h3>
-            <button onclick="closeUserModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999; line-height: 1;">&times;</button>
+<div id="userModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 36, 21, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+    <div class="card modal-box" style="width: 100%; max-width: 450px;">
+        
+        <div class="modal-header">
+            <h3 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 12px;">
+                <div style="background: #E6F1FB; color: #0C447C; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
+                Add Team Member
+            </h3>
+            <button type="button" onclick="closeUserModal()" class="btn-modal-close">✖</button>
         </div>
         
         {% if user_count >= 4 %}
-        <div style="background: #FAEEDA; border: 1px solid #FAC775; color: #854F0B; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 15px;">
-            <strong>Limit Reached:</strong> You have reached the maximum of 4 active users for this team.
+        <div style="background: #FCEBEB; border: 1px solid #F09595; color: #A32D2D; padding: 12px; border-radius: 8px; font-size: 12px; margin-bottom: 20px;">
+            <strong>Max Limit Reached:</strong> You cannot add more than 4 active users. Please remove an old user first.
         </div>
         {% endif %}
         
         <form action="/users" method="POST">
-            <div class="form-group" style="margin-bottom: 10px;">
-                <label class="form-label" style="display:block; font-weight:bold; font-size:12px; margin-bottom:5px;">Username</label>
-                {% if user_count >= 4 %}
-                    <input type="text" name="username" placeholder="e.g. maria_coord" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required disabled>
-                {% else %}
-                    <input type="text" name="username" placeholder="e.g. maria_coord" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required>
-                {% endif %}
-            </div>
-            <div class="form-group" style="margin-bottom: 10px;">
-                <label class="form-label" style="display:block; font-weight:bold; font-size:12px; margin-bottom:5px;">Full Name</label>
-                {% if user_count >= 4 %}
-                    <input type="text" name="full_name" placeholder="e.g. Maria Santos" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required disabled>
-                {% else %}
-                    <input type="text" name="full_name" placeholder="e.g. Maria Santos" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required>
-                {% endif %}
-            </div>
-            <div class="form-group" style="margin-bottom: 10px;">
-                <label class="form-label" style="display:block; font-weight:bold; font-size:12px; margin-bottom:5px;">System Role</label>
-                {% if user_count >= 4 %}
-                    <select name="role" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;" disabled>
-                {% else %}
-                    <select name="role" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;">
-                {% endif %}
-                        <option value="coordinator">Order Coordinator</option>
-                        <option value="packaging">Packaging & Inventory Assistant</option>
-                        <option value="production">Production Specialist</option>
-                    </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 15px;">
-                <label class="form-label" style="display:block; font-weight:bold; font-size:12px; margin-bottom:5px;">Initial Password</label>
-                {% if user_count >= 4 %}
-                    <input type="password" name="password" placeholder="Set initial password" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required disabled>
-                {% else %}
-                    <input type="password" name="password" placeholder="Set initial password" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:8px;" required>
-                {% endif %}
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Username</label>
+                    <input type="text" name="username" placeholder="e.g. maria_c" class="modern-input" required {% if user_count >= 4 %}disabled{% endif %}>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Password</label>
+                    <input type="password" name="password" placeholder="Temporary Pass" class="modern-input" required {% if user_count >= 4 %}disabled{% endif %}>
+                </div>
             </div>
             
-            {% if user_count >= 4 %}
-                <button type="submit" class="btn-leaf" style="width: 100%; margin-top: 10px; opacity: 0.5; cursor: not-allowed;" disabled>Add User ({{ user_count }} / 4 Max)</button>
-            {% else %}
-                <button type="submit" class="btn-leaf" style="width: 100%; margin-top: 10px;">Add User ({{ user_count }} / 4 Max)</button>
-            {% endif %}
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Full Name</label>
+                <input type="text" name="full_name" placeholder="e.g. Maria Santos" class="modern-input" required {% if user_count >= 4 %}disabled{% endif %}>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">System Role</label>
+                <select name="role" class="modern-input" {% if user_count >= 4 %}disabled{% endif %}>
+                    <option value="coordinator">Order Coordinator</option>
+                    <option value="packaging">Packaging & Inventory Assistant</option>
+                    <option value="production">Production Specialist</option>
+                </select>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" onclick="closeUserModal()">Cancel</button>
+                <button type="submit" class="btn-leaf" style="width: auto; padding: 10px 24px; {% if user_count >= 4 %}opacity: 0.5; cursor: not-allowed;{% endif %}" {% if user_count >= 4 %}disabled{% endif %}>
+                    Create Account
+                </button>
+            </div>
         </form>
     </div>
 </div>
@@ -110,7 +90,5 @@
 <script>
     function openUserModal() { document.getElementById('userModal').style.display = 'flex'; }
     function closeUserModal() { document.getElementById('userModal').style.display = 'none'; }
-    // Close modal if user clicks outside the card
-    window.onclick = function(event) { if (event.target == document.getElementById('userModal')) closeUserModal(); }
 </script>
 {% endblock %}

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
     <div class="page-title" style="margin: 0;">
         <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">📦</div> Ingredient Inventory
     </div>
-    <button onclick="openModal()" class="btn-leaf">+ Log Purchase</button>
+    <button onclick="openModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">+ Log Market Purchase</button>
 </div>
 
 <div class="fixed-grid">
-    <div class="fixed-card" style="flex: 1;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">📊 Stock Status</h3>
+    <div class="fixed-card" style="flex: 1.5;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">📊 Full Inventory Status</h3>
         <div class="table-wrapper">
             <table class="table-custom">
                 <thead><tr><th>Ingredient</th><th>Current Stock</th><th>Status</th></tr></thead>
@@ -18,21 +18,11 @@
                     {% for item in ingredients %}
                     <tr>
                         <td style="font-weight: 600;">{{ item.name }}</td>
-                        <td style="font-weight: bold; color: {% if item.current_stock_usage <= item.low_stock_threshold %}#A32D2D{% else %}inherit{% endif %};">
-                            {{ "{:,.1f}".format(item.current_stock_usage) }} {{ item.usage_unit }}
-                        </td>
-                        <td>
-                            {% if item.current_stock_usage <= item.low_stock_threshold %}
-                                <span style="background: #FCEBEB; color: #A32D2D; padding: 4px 8px; border-radius: 6px; font-size: 11px;">Low</span>
-                            {% else %}
-                                <span style="background: #EAF3DE; color: #3B6D11; padding: 4px 8px; border-radius: 6px; font-size: 11px;">Healthy</span>
-                            {% endif %}
-                        </td>
+                        <td style="font-weight: bold; color: {% if item.current_stock_usage <= item.low_stock_threshold %}#A32D2D{% else %}inherit{% endif %};">{{ "{:,.1f}".format(item.current_stock_usage) }} {{ item.usage_unit }}</td>
+                        <td>{% if item.current_stock_usage <= item.low_stock_threshold %}<span style="background: #FCEBEB; color: #A32D2D; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">Low Stock</span>{% else %}<span style="background: #EAF3DE; color: #3B6D11; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">Healthy</span>{% endif %}</td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(9 - ingredients|length) %}
-                    <tr><td colspan="3" style="color: transparent;">-</td></tr>
-                    {% endfor %}
+                    {% for i in range(9 - ingredients|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -43,24 +33,22 @@
         <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">💸 Expense History</h3>
         <div class="table-wrapper">
             <table class="table-custom">
-                <thead><tr><th>Date</th><th>Ingredient</th><th>Cost</th></tr></thead>
+                <thead><tr><th>Date</th><th>Ingredient & Amount</th><th>Total Cost</th></tr></thead>
                 <tbody>
                     {% for record in history %}
                     <tr>
-                        <td style="font-size: 11px; color: var(--text-muted);">{{ record.created_at.strftime('%b %d %H:%M') }}</td>
-                        <td><strong style="font-size: 12px;">{{ record.ingredient_name }}</strong><br><span style="color: var(--leaf); font-size: 11px;">+{{ record.purchase_amount }} {{ record.purchase_unit }}</span></td>
+                        <td style="color: var(--text-muted); font-size: 11px;">{{ record.created_at.strftime('%b %d, %Y') }}<br>{{ record.created_at.strftime('%I:%M %p') }}</td>
+                        <td><strong style="font-size: 13px; color: var(--text-main);">{{ record.ingredient_name }}</strong><br><span style="color: var(--leaf); font-weight: 600; font-size: 12px;">+{{ record.purchase_amount }} {{ record.purchase_unit }}</span></td>
                         <td style="font-weight: bold; color: #A32D2D;">₱{{ "{:,.2f}".format(record.cost) }}</td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - history|length) %}
-                    <tr><td colspan="3" style="color: transparent;">-</td></tr>
-                    {% endfor %}
+                    {% for i in range(per_page - history|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
                 </tbody>
             </table>
         </div>
         <div class="pagination-bar">
-            {% if current_page > 1 %} <a href="?page={{ current_page - 1 }}" class="btn-leaf">&larr; Prev</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            {% if current_page > 1 %} <a href="?page={{ current_page - 1 }}" class="btn-leaf">&larr; Previous</a>
+            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Previous</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page }} of {{ total_pages }}</span>
             {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="btn-leaf">Next &rarr;</a>
             {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
@@ -68,21 +56,42 @@
     </div>
 </div>
 
-<div id="restockModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div class="card" style="width: 100%; max-width: 400px; padding: 30px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="color: var(--leaf);">🛒 Log Purchase</h3>
-            <button onclick="document.getElementById('restockModal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+<div id="restockModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 36, 21, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
+    <div class="card modal-box" style="width: 100%; max-width: 450px;">
+        <div class="modal-header">
+            <h3 style="margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 12px;">
+                <div style="background: #E6F1FB; color: #0C447C; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">📦</div>
+                Log Market Purchase
+            </h3>
+            <button onclick="closeModal()" class="btn-modal-close">✖</button>
         </div>
         <form action="/inventory/purchase" method="POST">
-            <select name="ingredient_id" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc;">
-                {% for item in ingredients %}{% if item.name not in ['Basil', 'Spinach', 'Malunggay', 'Mint'] %}<option value="{{ item.id }}">{{ item.name }}</option>{% endif %}{% endfor %}
-            </select>
-            <input type="number" name="purchase_amount" step="0.01" placeholder="Amount" required style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc;">
-            <input type="number" name="cost" step="0.01" placeholder="Total Cost (₱)" required style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc;">
-            <button type="submit" class="btn-leaf">Log Purchase</button>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Ingredient Type</label>
+                <select name="ingredient_id" class="modern-input">
+                    {% for item in ingredients %}{% if item.name not in ['Basil', 'Spinach', 'Malunggay', 'Mint'] %}<option value="{{ item.id }}">{{ item.name }} (buy per {{ item.purchase_unit }})</option>{% endif %}{% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Amount Bought</label>
+                    <input type="number" name="purchase_amount" step="0.01" placeholder="e.g. 2.5" class="modern-input" required>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Total Cost (₱)</label>
+                    <input type="number" name="cost" step="0.01" placeholder="e.g. 150.00" class="modern-input" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-leaf" style="width: auto; padding: 10px 24px;">Add to Inventory</button>
+            </div>
         </form>
     </div>
 </div>
-<script>function openModal() { document.getElementById('restockModal').style.display = 'flex'; }</script>
+
+<script>
+    function openModal() { document.getElementById('restockModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('restockModal').style.display = 'none'; }
+</script>
 {% endblock %}

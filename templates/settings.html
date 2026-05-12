@@ -1,69 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="page-title" style="margin-bottom: 20px;">
-    <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">⚙️</div> Account Settings
-</div>
+<div class="page-title" style="margin-bottom: 20px;"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">⚙️</div> Account Settings</div>
 
 <div class="fixed-grid">
-    
     <div class="fixed-card" style="flex: 1; align-items: center; justify-content: center; text-align: center; border-top: 5px solid var(--leaf);">
         <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=EAF3DE&color=3B6D11&size=200&bold=true" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--leaf); object-fit: cover; margin-bottom: 15px; box-shadow: var(--shadow-sm);" alt="Profile">
-        
         <h2 style="font-size: 20px; color: var(--text-main); margin-bottom: 5px;">{{ user.full_name }}</h2>
         <div style="color: var(--text-muted); font-size: 14px; font-weight: bold; margin-bottom: 10px;">@{{ user.username }}</div>
-        
-        <span style="background: #E6F1FB; color: #0C447C; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
-            {{ user.role }}
-        </span>
-        
-        <p style="margin-top: 25px; font-size: 12px; color: #999; line-height: 1.6; max-width: 250px;">
-            Your avatar is automatically generated based on your username. Update your details on the right.
-        </p>
+        <span style="background: #E6F1FB; color: #0C447C; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">{{ user.role }}</span>
+        <p style="margin-top: 25px; font-size: 12px; color: #999; line-height: 1.6; max-width: 250px;">Your avatar is automatically generated based on your username. Update your details on the right.</p>
     </div>
 
     <div class="fixed-card" style="flex: 2;">
         <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--text-main); border-bottom: 1px solid #eee; padding-bottom: 10px;">Personal Information</h3>
         
-        <form action="/settings/update" method="POST" onsubmit="return validateSettingsForm();" style="display: flex; flex-direction: column; gap: 10px; max-width: 500px;">
-            
+        <form action="/settings/update" method="POST" onsubmit="return validateSettingsForm();" style="display: flex; flex-direction: column; gap: 15px; max-width: 500px;">
             <div class="form-group">
-                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Full Name</label>
-                <input type="text" name="full_name" value="{{ user.full_name }}" required style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; outline-color: var(--leaf);">
+                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Full Name</label>
+                <input type="text" name="full_name" value="{{ user.full_name }}" required class="modern-input">
             </div>
-            
             <div class="form-group">
-                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Username</label>
-                <input type="text" name="username" value="{{ user.username }}" required style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; outline-color: var(--leaf);">
+                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Username</label>
+                <input type="text" name="username" value="{{ user.username }}" required class="modern-input">
             </div>
 
             <h3 style="margin-top: 10px; margin-bottom: 5px; font-size: 14px; color: var(--text-main); border-bottom: 1px solid #eee; padding-bottom: 5px;">Security</h3>
             <div style="font-size: 11px; color: #888; margin-bottom: 10px;">Leave these blank if you only want to update your name/username above.</div>
             
             <div class="form-group">
-                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Old Password</label>
-                <input type="password" name="old_password" id="old_pw" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; outline-color: var(--leaf);">
+                <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Old Password</label>
+                <input type="password" name="old_password" id="old_pw" class="modern-input">
             </div>
-            
             <div style="display: flex; gap: 15px;">
                 <div class="form-group" style="flex: 1;">
-                    <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">New Password</label>
-                    <input type="password" name="new_password" id="new_pw" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; outline-color: var(--leaf);">
+                    <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">New Password</label>
+                    <input type="password" name="new_password" id="new_pw" class="modern-input">
                 </div>
-                
                 <div class="form-group" style="flex: 1;">
-                    <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Confirm Password</label>
-                    <input type="password" name="confirm_password" id="confirm_pw" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; outline-color: var(--leaf);">
+                    <label style="display: block; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Confirm Password</label>
+                    <input type="password" name="confirm_password" id="confirm_pw" class="modern-input">
                 </div>
             </div>
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                <button type="submit" class="btn-leaf" style="padding: 10px 24px; font-size: 14px; width: 100%;">Save Changes</button>
+                <button type="submit" class="btn-leaf" style="padding: 12px 24px; font-size: 14px; width: 100%;">Save Changes</button>
             </div>
-            
         </form>
     </div>
-    
 </div>
 
 <script>
@@ -71,19 +55,11 @@
         const oldPw = document.getElementById('old_pw').value;
         const newPw = document.getElementById('new_pw').value;
         const confirmPw = document.getElementById('confirm_pw').value;
-
-        // If the user typed in ANY of the password fields, make sure they filled out ALL of them
         if (oldPw || newPw || confirmPw) {
-            if (!oldPw || !newPw || !confirmPw) {
-                alert("Please fill out all three password fields if you wish to change your password.");
-                return false; // Stops the form from submitting
-            }
-            if (newPw !== confirmPw) {
-                alert("Your new passwords do not match!");
-                return false; 
-            }
+            if (!oldPw || !newPw || !confirmPw) { alert("Please fill out all three password fields if you wish to change your password."); return false; }
+            if (newPw !== confirmPw) { alert("Your new passwords do not match!"); return false; }
         }
-        return true; // Form submits normally
+        return true; 
     }
 </script>
 {% endblock %}

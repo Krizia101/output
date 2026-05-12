@@ -15,7 +15,7 @@
                         <td style="font-weight: 600;">{{ batch.product_name }}</td>
                         <td style="color: var(--leaf); font-weight: bold;">{{ batch.jars_produced }} jars</td>
                         <td>
-                            <form action="/production/update" method="POST" style="margin: 0;">
+                            <form action="/production/update" method="POST" style="margin: 0;" onsubmit="showConfirmModal(event, 'Are you sure this batch of {{ batch.jars_produced }} jars of {{ batch.product_name }} is fully finished?\n\nClicking confirm will move this batch to Completed and add the jars to your inventory shelf.');">
                                 <input type="hidden" name="batch_id" value="{{ batch.id }}">
                                 <button type="submit" style="background: #EAF3DE; color: #3B6D11; border: 1px solid #C0DD97; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">✅ Done</button>
                             </form>

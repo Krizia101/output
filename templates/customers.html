@@ -10,10 +10,7 @@
             {% for customer in customers %}
             <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee; height: 56px;">
                 <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--leaf-light); color: var(--leaf); display: flex; align-items: center; justify-content: center; font-weight: bold;">{{ customer.customer_name[0] | upper }}</div>
-                <div style="flex: 1; overflow: hidden;">
-                    <div style="font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ customer.customer_name }}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">{{ customer.total_orders }} orders · {{ customer.total_jars }} jars</div>
-                </div>
+                <div style="flex: 1; overflow: hidden;"><div style="font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ customer.customer_name }}</div><div style="font-size: 11px; color: var(--text-muted);">{{ customer.total_orders }} orders · {{ customer.total_jars }} jars</div></div>
                 <div style="text-align: right; font-weight: bold; color: var(--leaf);">₱{{ "{:,.2f}".format(customer.total_spent) }}</div>
             </div>
             {% endfor %}
@@ -21,11 +18,9 @@
         </div>
         <div class="pagination-bar">
             {% set search_param = '&search=' + search_query if search_query else '' %}
-            {% if current_page_l > 1 %} <a href="?page_l={{ current_page_l - 1 }}&page_t={{ current_page_t }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            {% if current_page_l > 1 %} <a href="?page_l={{ current_page_l - 1 }}&page_t={{ current_page_t }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_l }} of {{ total_pages_l }}</span>
-            {% if current_page_l < total_pages_l %} <a href="?page_l={{ current_page_l + 1 }}&page_t={{ current_page_t }}{{ search_param }}" class="btn-leaf">Next &rarr;</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+            {% if current_page_l < total_pages_l %} <a href="?page_l={{ current_page_l + 1 }}&page_t={{ current_page_t }}{{ search_param }}" class="btn-leaf">Next &rarr;</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
         </div>
     </div>
 
@@ -34,9 +29,9 @@
             <h3 style="margin: 0; font-size: 14px; color: var(--text-muted);">🛒 Recent Transactions</h3>
             <form action="/customers" method="GET" style="display: flex; gap: 5px; margin: 0;">
                 <input type="hidden" name="page_l" value="{{ current_page_l }}">
-                <input type="text" name="search" value="{{ search_query }}" placeholder="Search customer..." style="padding: 4px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; width: 150px; outline-color: var(--leaf);">
-                <button type="submit" class="btn-leaf" style="padding: 4px 10px; font-size: 12px; width: auto;">Search</button>
-                {% if search_query %}<a href="/customers?page_l={{ current_page_l }}" class="btn-leaf" style="padding: 4px 10px; font-size: 12px; width: auto; background: #eee; color: #333; text-decoration: none; border: 1px solid #ccc;">Clear</a>{% endif %}
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search customer..." class="modern-input" style="padding: 6px 12px; width: 200px;">
+                <button type="submit" class="btn-leaf" style="padding: 6px 12px; width: auto;">Search</button>
+                {% if search_query %}<a href="/customers?page_l={{ current_page_l }}" class="btn-leaf" style="padding: 6px 12px; width: auto; background: #eee; color: #333; text-decoration: none; border: 1px solid #ccc;">Clear</a>{% endif %}
             </form>
         </div>
         <div class="table-wrapper">
@@ -56,11 +51,9 @@
             </table>
         </div>
         <div class="pagination-bar">
-            {% if current_page_t > 1 %} <a href="?page_l={{ current_page_l }}&page_t={{ current_page_t - 1 }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            {% if current_page_t > 1 %} <a href="?page_l={{ current_page_l }}&page_t={{ current_page_t - 1 }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_t }} of {{ total_pages_t }}</span>
-            {% if current_page_t < total_pages_t %} <a href="?page_l={{ current_page_l }}&page_t={{ current_page_t + 1 }}{{ search_param }}" class="btn-leaf">Next &rarr;</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+            {% if current_page_t < total_pages_t %} <a href="?page_l={{ current_page_l }}&page_t={{ current_page_t + 1 }}{{ search_param }}" class="btn-leaf">Next &rarr;</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
         </div>
     </div>
 </div>

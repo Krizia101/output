@@ -14,7 +14,7 @@
                     <tr>
                         <td style="font-size: 11px;">{{ log.created_at.strftime('%m/%d %H:%M') }}</td>
                         <td style="font-weight: bold;">{{ log.username }}</td>
-                        <td><span style="background: var(--color-background-secondary); padding: 3px 8px; border-radius: 10px; font-size: 11px;">{{ log.action_type }}</span></td>
+                        <td><span style="background: #E6F1FB; color: #0C447C; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">{{ log.action_type }}</span></td>
                         <td style="font-size: 11px;">{{ log.description }}</td>
                     </tr>
                     {% endfor %}
@@ -23,11 +23,9 @@
             </table>
         </div>
         <div class="pagination-bar">
-            {% if current_page_a > 1 %} <a href="?page_a={{ current_page_a - 1 }}&page_l={{ current_page_l }}" class="btn-leaf">&larr; Prev</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            {% if current_page_a > 1 %} <a href="?page_a={{ current_page_a - 1 }}&page_l={{ current_page_l }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_a }} of {{ total_pages_a }}</span>
-            {% if current_page_a < total_pages_a %} <a href="?page_a={{ current_page_a + 1 }}&page_l={{ current_page_l }}" class="btn-leaf">Next &rarr;</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+            {% if current_page_a < total_pages_a %} <a href="?page_a={{ current_page_a + 1 }}&page_l={{ current_page_l }}" class="btn-leaf">Next &rarr;</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
         </div>
     </div>
 
@@ -40,7 +38,7 @@
                     {% for entry in logins %}
                     <tr>
                         <td style="font-weight: bold;">{{ entry.username }}</td>
-                        <td>{% if entry.action == 'failed_attempt' %}<span style="color:#A32D2D;">Failed</span>{% elif entry.action == 'login' %}<span style="color:#3B6D11;">Login</span>{% else %}<span style="color:#666;">Logout</span>{% endif %}</td>
+                        <td>{% if entry.action == 'failed_attempt' %}<span style="color:#A32D2D; font-weight:bold;">Failed</span>{% elif entry.action == 'login' %}<span style="color:#3B6D11; font-weight:bold;">Login</span>{% else %}<span style="color:#666; font-weight:bold;">Logout</span>{% endif %}</td>
                         <td style="font-size: 11px;">{{ entry.created_at.strftime('%m/%d %H:%M') }}</td>
                     </tr>
                     {% endfor %}
@@ -49,11 +47,9 @@
             </table>
         </div>
         <div class="pagination-bar">
-            {% if current_page_l > 1 %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l - 1 }}" class="btn-leaf">&larr; Prev</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+            {% if current_page_l > 1 %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l - 1 }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_l }} of {{ total_pages_l }}</span>
-            {% if current_page_l < total_pages_l %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l + 1 }}" class="btn-leaf">Next &rarr;</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+            {% if current_page_l < total_pages_l %} <a href="?page_a={{ current_page_a }}&page_l={{ current_page_l + 1 }}" class="btn-leaf">Next &rarr;</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
         </div>
     </div>
 </div>
