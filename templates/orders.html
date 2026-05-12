@@ -132,7 +132,11 @@
     function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
     function checkStock(inputElement, maxStock, productName) {
         let requestedQty = parseInt(inputElement.value);
-        if (requestedQty > maxStock) { alert("⚠️ Stock Shortage!\n\nYou only have " + maxStock + " jars of '" + productName + "' available."); inputElement.value = maxStock; }
+        if (requestedQty > maxStock) { 
+            // Replaced native alert with our new beautiful modal
+            showAlertModal("Stock Shortage", "You only have " + maxStock + " jars of '" + productName + "' available."); 
+            inputElement.value = maxStock; 
+        }
         calculateTotal(); 
     }
     function calculateTotal() {
