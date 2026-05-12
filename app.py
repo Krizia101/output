@@ -1,4 +1,4 @@
-import os, csv, io, urllib.parse, math
+import os, csv, io, urllib.parse, math, bcrypt
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -62,6 +62,20 @@ def generate_dss_insights(cursor):
         return insights[:3] # Limit to top 3 insights for unscrollable view
     except Exception as e:
         return [{"type": "info", "message": "DSS System is calibrating data..."}]
+    
+def hash_password(plain_password: str) -> str:
+    """Hashes a password using bcrypt."""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(plain_password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verifies a plain password against the stored hash."""
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except ValueError:
+        # Falls back gracefully if the stored password isn't a valid bcrypt hash yet
+        return False
 
 # ==========================================
 # AUTHENTICATION ROUTES
@@ -78,7 +92,7 @@ async def handle_login(request: Request, username: str = Form(...), password: st
     client_ip = request.client.host if request.client else "Unknown"
     cursor.execute("SELECT * FROM users WHERE username = %s AND status = 'active'", (username,))
     user = cursor.fetchone()
-    if user and user['password_hash'] == password:
+    if user and verify_password(password, user['password_hash']):
         request.session.update({'user_id': user['id'], 'username': user['username'], 'role': user['role']})
         cursor.execute("INSERT INTO login_history (username, action, ip_address) VALUES (%s, 'login', %s)", (user['username'], client_ip))
         db.commit()
@@ -205,7 +219,7 @@ async def create_order(request: Request):
     items_to_buy, total_order_price = [], 0.0
     for product in db_products:
         qty_str = form_data.get(f"product_qty_{product['id']}")
-        if qty_str and int(qty_str) > 0:
+        if qty_str and qty_str.isdigit() and int(qty_str) > 0:
             qty = int(qty_str)
             if product['current_stock_jars'] < qty:
                 db.close()
@@ -602,11 +616,15 @@ async def update_settings(request: Request, username: str = Form(...), full_name
             
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
         current_user = cursor.fetchone()
-        if current_user['password_hash'] != old_password:
+        
+        # Securely verify the old password
+        if not verify_password(old_password, current_user['password_hash']):
             db.close()
             return RedirectResponse(url="/settings?error=Incorrect old password.", status_code=303)
             
-        cursor.execute("UPDATE users SET username = %s, full_name = %s, password_hash = %s WHERE id = %s", (username, full_name, new_password, user_id))
+        # Securely hash the new password
+        hashed_new_pw = hash_password(new_password)
+        cursor.execute("UPDATE users SET username = %s, full_name = %s, password_hash = %s WHERE id = %s", (username, full_name, hashed_new_pw, user_id))
     else:
         cursor.execute("UPDATE users SET username = %s, full_name = %s WHERE id = %s", (username, full_name, user_id))
         
@@ -630,15 +648,30 @@ async def users_page(request: Request, error: str = None, success: str = None):
 async def create_user(request: Request, username: str = Form(...), full_name: str = Form(...), role: str = Form(...), password: str = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
+    
+    # --- ADD THIS NEW BLOCK HERE ---
+    # 1. Prevent server crash by checking if the username already exists in the database
+    cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+    if cursor.fetchone():
+        db.close()
+        return RedirectResponse(url="/users?error=That username is already taken (or belongs to a deactivated account). Choose a different username.", status_code=303)
+    # -------------------------------
+
     cursor.execute("SELECT full_name FROM users WHERE role = %s AND status = 'active'", (role,))
-    if cursor.fetchone(): db.close(); return RedirectResponse(url=f"/users?error=Role active.", status_code=303)
+    if cursor.fetchone(): 
+        db.close()
+        return RedirectResponse(url=f"/users?error=Role active.", status_code=303)
+        
     cursor.execute("SELECT COUNT(*) as count FROM users WHERE status = 'active'")
     if cursor.fetchone()['count'] < 4:
-        cursor.execute("INSERT INTO users (username, full_name, role, password_hash, status) VALUES (%s, %s, %s, %s, 'active')", (username, full_name, role, password))
+        # Assuming you added the password hashing from earlier!
+        hashed_pw = hash_password(password)
+        cursor.execute("INSERT INTO users (username, full_name, role, password_hash, status) VALUES (%s, %s, %s, %s, 'active')", (username, full_name, role, hashed_pw))
         log_audit(request.session.get('username'), "SYSTEM", f"Created {role} account.")
         db.commit()
         db.close()
         return RedirectResponse(url="/users?success=Added user.", status_code=303)
+        
     db.close()
     return RedirectResponse(url="/users?error=Limit reached.", status_code=303)
 
