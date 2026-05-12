@@ -9,7 +9,13 @@ from dotenv import load_dotenv
 # Load hidden variables from .env
 load_dotenv()
 
-app = FastAPI(title="Pestong Yummy PH System")
+# We add a nice title and description for the Swagger UI header!
+app = FastAPI(
+    title="Pestong Yummy PH - Management API",
+    description="Internal Enterprise Dashboard API for Pestong Yummy operations, inventory, and sales.",
+    version="1.0.0"
+)
+
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SECRET_KEY', 'secret'))
 templates = Jinja2Templates(directory="templates")
 
@@ -61,11 +67,11 @@ def generate_dss_insights(cursor):
 # AUTHENTICATION ROUTES
 # ==========================================
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, tags=["🔐 Authentication"], summary="Show Login Page")
 async def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html")
 
-@app.post("/login")
+@app.post("/login", tags=["🔐 Authentication"], summary="Process User Login")
 async def handle_login(request: Request, username: str = Form(...), password: str = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -83,7 +89,7 @@ async def handle_login(request: Request, username: str = Form(...), password: st
     db.close()
     return templates.TemplateResponse(request, "login.html", {"error": "Invalid username or password"})
 
-@app.get("/logout")
+@app.get("/logout", tags=["🔐 Authentication"], summary="Securely Log Out User")
 async def logout_user(request: Request):
     db = get_db_connection()
     cursor = db.cursor()
@@ -97,7 +103,7 @@ async def logout_user(request: Request):
 # DASHBOARD ROUTE
 # ==========================================
 
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse, tags=["📊 Dashboard"], summary="View Role-Based Dashboard")
 async def dashboard_page(request: Request):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     
@@ -107,23 +113,16 @@ async def dashboard_page(request: Request):
     
     data = {"username": request.session.get('username'), "role": role}
 
-    # --- ADMIN DASHBOARD DATA ---
     if role == 'admin':
         cursor.execute("SELECT * FROM ingredients")
         data['ingredients'] = cursor.fetchall()
-        
         cursor.execute("SELECT SUM(total_price) as today_revenue FROM orders WHERE DATE(created_at) = CURDATE()")
         data['today_revenue'] = cursor.fetchone()['today_revenue'] or 0.0
-        
         cursor.execute("SELECT COUNT(id) as pending_count FROM orders WHERE status = 'pending'")
         data['pending_orders'] = cursor.fetchone()['pending_count'] or 0
-        
         cursor.execute("SELECT SUM(current_stock_jars) as total_jars FROM products")
         data['total_jars'] = int(cursor.fetchone()['total_jars'] or 0)
-        
         data['insights'] = generate_dss_insights(cursor)
-        
-        # NEW: Get Top Selling Product for the month
         cursor.execute("""
             SELECT p.name, SUM(oi.quantity) as total_sold 
             FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id 
@@ -131,12 +130,9 @@ async def dashboard_page(request: Request):
             GROUP BY p.id ORDER BY total_sold DESC LIMIT 1
         """)
         data['top_product'] = cursor.fetchone()
-        
-        # NEW: Get the 4 most recent actions by staff
         cursor.execute("SELECT username, action_type, description, created_at FROM audit_log ORDER BY created_at DESC LIMIT 4")
         data['recent_activity'] = cursor.fetchall()
 
-    # --- COORDINATOR DASHBOARD DATA ---
     elif role == 'coordinator':
         cursor.execute("SELECT COUNT(id) as pending_count FROM orders WHERE status = 'pending'")
         data['pending_orders'] = cursor.fetchone()['pending_count'] or 0
@@ -145,7 +141,6 @@ async def dashboard_page(request: Request):
         cursor.execute("SELECT id, customer_name, total_price, created_at FROM orders WHERE status = 'completed' ORDER BY created_at DESC LIMIT 3")
         data['recent_completed'] = cursor.fetchall()
 
-    # --- PACKAGING DASHBOARD DATA ---
     elif role == 'packaging':
         cursor.execute("SELECT COUNT(*) as low_count FROM ingredients WHERE current_stock_usage <= low_stock_threshold")
         data['low_count'] = cursor.fetchone()['low_count'] or 0
@@ -154,7 +149,6 @@ async def dashboard_page(request: Request):
         cursor.execute("SELECT i.name, ip.purchase_amount, i.purchase_unit, ip.restock_type, ip.created_at FROM ingredient_purchases ip JOIN ingredients i ON ip.ingredient_id = i.id ORDER BY ip.created_at DESC LIMIT 4")
         data['recent_restocks'] = cursor.fetchall()
 
-    # --- PRODUCTION DASHBOARD DATA ---
     elif role == 'production':
         cursor.execute("SELECT name, current_stock_jars FROM products ORDER BY current_stock_jars ASC LIMIT 3")
         data['low_products'] = cursor.fetchall()
@@ -167,10 +161,10 @@ async def dashboard_page(request: Request):
     return templates.TemplateResponse(request, "dashboard.html", data)
 
 # ==========================================
-# ORDERS ROUTES (Multi-Item & Pagination)
+# ORDERS ROUTES 
 # ==========================================
 
-@app.get("/orders", response_class=HTMLResponse)
+@app.get("/orders", response_class=HTMLResponse, tags=["🛒 Order Management"], summary="View Orders & Pending Queue")
 async def view_orders(request: Request, page_p: int = 1, page_c: int = 1, error: str = None, success: str = None):
     if 'username' not in request.session or request.session.get('role') not in ['admin', 'coordinator']: return RedirectResponse(url="/dashboard", status_code=303)
     db = get_db_connection()
@@ -182,13 +176,11 @@ async def view_orders(request: Request, page_p: int = 1, page_c: int = 1, error:
     offset_p = (page_p - 1) * records_per_page
     offset_c = (page_c - 1) * records_per_page
     
-    # Left Side: Pending
     cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'pending'")
     total_pages_p = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     cursor.execute("SELECT id, customer_name, total_price, payment_method, payment_status, created_at FROM orders WHERE status = 'pending' ORDER BY created_at ASC LIMIT %s OFFSET %s", (records_per_page, offset_p))
     pending_orders = cursor.fetchall()
 
-    # Right Side: Completed
     cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'completed'")
     total_pages_c = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     cursor.execute("SELECT id, customer_name, total_price, payment_method, payment_status, created_at FROM orders WHERE status = 'completed' ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_c))
@@ -201,7 +193,7 @@ async def view_orders(request: Request, page_p: int = 1, page_c: int = 1, error:
         "current_page_c": page_c, "total_pages_c": total_pages_c, "per_page": records_per_page
     })
 
-@app.post("/orders")
+@app.post("/orders", tags=["🛒 Order Management"], summary="Create New Multi-Item Order")
 async def create_order(request: Request):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     form_data = await request.form()
@@ -238,7 +230,7 @@ async def create_order(request: Request):
     db.close()
     return RedirectResponse(url="/orders?success=Order successfully placed!", status_code=303)
 
-@app.post("/orders/update")
+@app.post("/orders/update", tags=["🛒 Order Management"], summary="Update Order Status (Complete/Cancel)")
 async def update_order(request: Request):
     if request.session.get('role') not in ['admin', 'coordinator']: return RedirectResponse(url="/orders", status_code=303)
     
@@ -249,12 +241,9 @@ async def update_order(request: Request):
     
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
-    
-    # FIX: We fetch the current status immediately to clear the database cursor
     cursor.execute("SELECT status FROM orders WHERE id = %s", (order_id,))
     current_order = cursor.fetchone()
     
-    # Now it is safe to check the rules without leaving unread results
     if current_order and new_status == 'cancelled' and current_order['status'] != 'cancelled':
         cursor.execute("SELECT product_id, quantity FROM order_items WHERE order_id = %s", (order_id,))
         items = cursor.fetchall()
@@ -262,7 +251,6 @@ async def update_order(request: Request):
             cursor.execute("UPDATE products SET current_stock_jars = current_stock_jars + %s WHERE id = %s", (item['quantity'], item['product_id']))
         log_audit(request.session.get('username'), "UNDO", f"Cancelled Order #{order_id} and returned items.")
         
-    # Execute the final update safely
     cursor.execute("UPDATE orders SET status = %s, payment_status = %s WHERE id = %s", (new_status, payment_status, order_id))
     db.commit()
     db.close()
@@ -273,7 +261,7 @@ async def update_order(request: Request):
 # PRODUCTION & SCHEDULE ROUTES
 # ==========================================
 
-@app.get("/production", response_class=HTMLResponse)
+@app.get("/production", response_class=HTMLResponse, tags=["🏭 Production System"], summary="View Production Floor & Start Batches")
 async def production_page(request: Request, error: str = None, success: str = None):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -295,7 +283,7 @@ async def production_page(request: Request, error: str = None, success: str = No
     db.close()
     return templates.TemplateResponse(request, "production.html", {"products": products_data[:4], "role": request.session.get('role'), "error": error, "success": success})
 
-@app.post("/production")
+@app.post("/production", tags=["🏭 Production System"], summary="Log New Production Batch")
 async def log_production(request: Request, product_id: int = Form(...), jars_produced: int = Form(...)):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -316,7 +304,7 @@ async def log_production(request: Request, product_id: int = Form(...), jars_pro
     db.close()
     return RedirectResponse(url="/production?success=Batch started! Check Schedule.", status_code=303)
 
-@app.get("/schedule", response_class=HTMLResponse)
+@app.get("/schedule", response_class=HTMLResponse, tags=["🏭 Production System"], summary="View Production Schedule & WIP")
 async def schedule_page(request: Request, page_w: int = 1, page_c: int = 1, error: str = None, success: str = None):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -326,13 +314,11 @@ async def schedule_page(request: Request, page_w: int = 1, page_c: int = 1, erro
     offset_w = (page_w - 1) * records_per_page
     offset_c = (page_c - 1) * records_per_page
     
-    # Left Side: WIP
     cursor.execute("SELECT COUNT(*) as total FROM production_batches WHERE status = 'in_progress'")
     total_pages_w = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     cursor.execute("SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id FROM production_batches pb JOIN products p ON pb.product_id = p.id WHERE pb.status = 'in_progress' ORDER BY pb.created_at ASC LIMIT %s OFFSET %s", (records_per_page, offset_w))
     wip_data = cursor.fetchall()
 
-    # Right Side: Completed
     cursor.execute("SELECT COUNT(*) as total FROM production_batches WHERE status = 'completed'")
     total_pages_c = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     cursor.execute("SELECT pb.id, pb.created_at, p.name as product_name, pb.jars_produced, pb.status, pb.product_id FROM production_batches pb JOIN products p ON pb.product_id = p.id WHERE pb.status = 'completed' ORDER BY pb.created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_c))
@@ -345,7 +331,7 @@ async def schedule_page(request: Request, page_w: int = 1, page_c: int = 1, erro
         "current_page_c": page_c, "total_pages_c": total_pages_c, "per_page": records_per_page
     })
 
-@app.post("/production/update")
+@app.post("/production/update", tags=["🏭 Production System"], summary="Mark Batch as Completed")
 async def update_production_status(request: Request, batch_id: int = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -360,10 +346,10 @@ async def update_production_status(request: Request, batch_id: int = Form(...)):
     return RedirectResponse(url="/schedule?success=Batch marked Completed!", status_code=303)
 
 # ==========================================
-# INVENTORY ROUTES (With Cost Tracking & Pagination)
+# INVENTORY ROUTES
 # ==========================================
 
-@app.get("/inventory", response_class=HTMLResponse)
+@app.get("/inventory", response_class=HTMLResponse, tags=["📦 Inventory Management"], summary="View Ingredient Stock & Restock History")
 async def inventory_page(request: Request, page: int = 1):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -381,7 +367,7 @@ async def inventory_page(request: Request, page: int = 1):
     db.close()
     return templates.TemplateResponse(request, "inventory.html", {"ingredients": ingredients_data, "history": history_data, "role": request.session.get('role'), "current_page": page, "total_pages": total_pages, "per_page": records_per_page})
 
-@app.post("/inventory/purchase")
+@app.post("/inventory/purchase", tags=["📦 Inventory Management"], summary="Log Market Purchase")
 async def log_purchase(request: Request, ingredient_id: int = Form(...), purchase_amount: float = Form(...), cost: float = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -395,45 +381,7 @@ async def log_purchase(request: Request, ingredient_id: int = Form(...), purchas
     db.close()
     return RedirectResponse(url="/inventory", status_code=303)
 
-# ==========================================
-# AUDIT TRAIL ROUTE
-# ==========================================
-
-@app.get("/audit", response_class=HTMLResponse)
-async def audit_page(request: Request, page_a: int = 1, page_l: int = 1):
-    if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
-    
-    records_per_page = 10
-    offset_a = (page_a - 1) * records_per_page
-    offset_l = (page_l - 1) * records_per_page
-    
-    # Left Side: System Activity
-    cursor.execute("SELECT COUNT(*) as total FROM audit_log")
-    total_pages_a = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
-    cursor.execute("SELECT * FROM audit_log ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_a))
-    logs_data = cursor.fetchall()
-    
-    # Right Side: Access History
-    cursor.execute("SELECT COUNT(*) as total FROM login_history")
-    total_pages_l = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
-    cursor.execute("SELECT * FROM login_history ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_l))
-    logins_data = cursor.fetchall()
-    
-    db.close()
-    return templates.TemplateResponse(request, "audit.html", {
-        "logs": logs_data, "logins": logins_data, 
-        "current_page_a": page_a, "total_pages_a": total_pages_a,
-        "current_page_l": page_l, "total_pages_l": total_pages_l,
-        "per_page": records_per_page
-    })
-
-# ==========================================
-# HARVEST LOG ROUTES
-# ==========================================
-
-@app.get("/harvest", response_class=HTMLResponse)
+@app.get("/harvest", response_class=HTMLResponse, tags=["📦 Inventory Management"], summary="View Herb Harvest Log")
 async def harvest_page(request: Request, page: int = 1):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -451,7 +399,7 @@ async def harvest_page(request: Request, page: int = 1):
     db.close()
     return templates.TemplateResponse(request, "harvest.html", {"herbs": herbs_data, "history": harvest_history, "role": request.session.get('role'), "current_page": page, "total_pages": total_pages, "per_page": records_per_page})
 
-@app.post("/harvest")
+@app.post("/harvest", tags=["📦 Inventory Management"], summary="Log Farm Harvest")
 async def log_harvest(request: Request, ingredient_id: int = Form(...), harvest_amount: float = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -466,10 +414,10 @@ async def log_harvest(request: Request, ingredient_id: int = Form(...), harvest_
     return RedirectResponse(url="/harvest", status_code=303)
 
 # ==========================================
-# CUSTOMER PROFILES ROUTE (With Pagination)
+# CUSTOMERS ROUTE
 # ==========================================
 
-@app.get("/customers", response_class=HTMLResponse)
+@app.get("/customers", response_class=HTMLResponse, tags=["👥 Customer Management"], summary="View Customer Profiles & Ledger")
 async def customers_page(request: Request, page_l: int = 1, page_t: int = 1, search: str = None):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -479,13 +427,11 @@ async def customers_page(request: Request, page_l: int = 1, page_t: int = 1, sea
     offset_l = (page_l - 1) * records_per_page
     offset_t = (page_t - 1) * records_per_page
     
-    # Left Side: Leaderboard
     cursor.execute("SELECT COUNT(DISTINCT customer_name) as total FROM orders")
     total_pages_l = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     cursor.execute("SELECT o.customer_name, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_spent FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY o.customer_name ORDER BY total_spent DESC LIMIT %s OFFSET %s", (records_per_page, offset_l))
     customers_data = cursor.fetchall()
     
-    # Right Side: Transactions
     count_query = "SELECT COUNT(*) as total FROM orders"
     if search:
         count_query += " WHERE customer_name LIKE %s"
@@ -512,10 +458,10 @@ async def customers_page(request: Request, page_l: int = 1, page_t: int = 1, sea
     })
 
 # ==========================================
-# BUSINESS REPORTS & EXPORT ROUTES
+# BUSINESS REPORTS ROUTES
 # ==========================================
 
-@app.get("/reports", response_class=HTMLResponse)
+@app.get("/reports", response_class=HTMLResponse, tags=["📈 Business Analytics"], summary="View Sales & Analytics Reports")
 async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
@@ -524,7 +470,6 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     records_per_page = 8
     offset = (page - 1) * records_per_page
 
-    # 1. Calculate Pagination Limits
     cursor.execute("SELECT COUNT(DISTINCT CONCAT(YEAR(created_at), WEEK(created_at))) as w_count FROM orders")
     w_total = cursor.fetchone()['w_count'] or 0
     cursor.execute("SELECT COUNT(DISTINCT CONCAT(YEAR(created_at), MONTH(created_at))) as m_count FROM orders")
@@ -534,7 +479,6 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     
     total_pages = max(1, (max(w_total, m_total, p_total) + records_per_page - 1) // records_per_page)
 
-    # 2. Paginated Table Data (For the Report Tabs)
     cursor.execute("SELECT CONCAT('Week ', WEEK(o.created_at)) AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY YEAR(o.created_at), WEEK(o.created_at) ORDER BY YEAR(o.created_at) DESC, WEEK(o.created_at) DESC LIMIT %s OFFSET %s", (records_per_page, offset))
     weekly_data = cursor.fetchall()
     
@@ -544,7 +488,6 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     cursor.execute("SELECT o.payment_method, COUNT(DISTINCT o.id) as total_orders, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY o.payment_method ORDER BY total_revenue DESC LIMIT %s OFFSET %s", (records_per_page, offset))
     payment_data = cursor.fetchall()
 
-    # 3. Dedicated Chart Data (Fixed 10 periods for clear visual trends, not paginated)
     cursor.execute("SELECT CONCAT('Week ', WEEK(o.created_at)) AS period, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY YEAR(o.created_at), WEEK(o.created_at) ORDER BY YEAR(o.created_at) DESC, WEEK(o.created_at) DESC LIMIT 10")
     weekly_chart = cursor.fetchall()
 
@@ -562,24 +505,69 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
         "active_tab": tab
     })
 
-@app.get("/reports/export")
-async def export_sales_csv(request: Request):
+@app.get("/reports/print", response_class=HTMLResponse, tags=["📈 Business Analytics"], summary="Generate Printable PDF Summary")
+async def print_report(request: Request):
+    """Generates a beautifully formatted HTML page designed strictly for PDF Export."""
+    if 'username' not in request.session or request.session.get('role') != 'admin':
+        return RedirectResponse(url="/dashboard", status_code=303)
+
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT o.id, o.created_at, o.customer_name, GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.name) SEPARATOR ' | ') as item_details, SUM(oi.quantity) as total_jars, o.total_price, o.payment_method, o.payment_status, o.status FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id GROUP BY o.id ORDER BY o.created_at DESC")
-    orders = cursor.fetchall()
+    
+    # 1. Overall Lifetime KPIs
+    cursor.execute("SELECT COUNT(id) as total_orders, SUM(total_price) as total_revenue FROM orders WHERE status = 'completed'")
+    kpis = cursor.fetchone()
+    
+    cursor.execute("SELECT SUM(quantity) as total_jars FROM order_items")
+    jars = cursor.fetchone()
+    kpis['total_jars'] = jars['total_jars'] if jars and jars['total_jars'] else 0
+    
+    # 2. Monthly Summary
+    cursor.execute("""
+        SELECT DATE_FORMAT(o.created_at, '%M %Y') AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue
+        FROM orders o JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.status = 'completed'
+        GROUP BY YEAR(o.created_at), MONTH(o.created_at) ORDER BY YEAR(o.created_at) DESC, MONTH(o.created_at) DESC
+    """)
+    monthly_data = cursor.fetchall()
+    
+    # 3. Weekly Summary
+    cursor.execute("""
+        SELECT CONCAT('Week ', WEEK(o.created_at), ', ', YEAR(o.created_at)) AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue
+        FROM orders o JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.status = 'completed'
+        GROUP BY YEAR(o.created_at), WEEK(o.created_at) ORDER BY YEAR(o.created_at) DESC, WEEK(o.created_at) DESC LIMIT 15
+    """)
+    weekly_data = cursor.fetchall()
+
+    # 4. Top Products All-Time
+    cursor.execute("""
+        SELECT p.name, SUM(oi.quantity) as total_sold, SUM(oi.subtotal) as total_revenue
+        FROM order_items oi JOIN products p ON oi.product_id = p.id
+        GROUP BY p.id ORDER BY total_sold DESC
+    """)
+    product_data = cursor.fetchall()
+
     db.close()
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['Order ID', 'Date', 'Customer Name', 'Items Purchased', 'Total Jars', 'Total Revenue', 'Payment Method', 'Payment Status', 'Order Status'])
-    for order in orders: writer.writerow([order['id'], order['created_at'].strftime('%Y-%m-%d %H:%M'), order['customer_name'], order['item_details'], order['total_jars'], order['total_price'], order['payment_method'], order['payment_status'], order['status']])
-    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=Pestong_Yummy_Sales.csv"})
+    
+    from datetime import datetime
+    current_date = datetime.now().strftime("%B %d, %Y")
+    admin_name = request.session.get('username')
+    
+    return templates.TemplateResponse(request, "report_print.html", {
+        "kpis": kpis,
+        "monthly": monthly_data,
+        "weekly": weekly_data,
+        "products": product_data,
+        "date": current_date,
+        "generated_by": admin_name
+    })
 
 # ==========================================
-# ACCOUNT SETTINGS ROUTES
+# USER & SETTINGS ROUTES 
 # ==========================================
 
-@app.get("/settings", response_class=HTMLResponse)
+@app.get("/settings", response_class=HTMLResponse, tags=["⚙️ User Administration"], summary="View Account Settings")
 async def settings_page(request: Request, error: str = None, success: str = None):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     
@@ -591,7 +579,7 @@ async def settings_page(request: Request, error: str = None, success: str = None
     
     return templates.TemplateResponse(request, "settings.html", {"user": user_data, "error": error, "success": success})
 
-@app.post("/settings/update")
+@app.post("/settings/update", tags=["⚙️ User Administration"], summary="Update Personal Profile & Password")
 async def update_settings(request: Request, username: str = Form(...), full_name: str = Form(...), old_password: str = Form(""), new_password: str = Form(""), confirm_password: str = Form("")):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     
@@ -599,51 +587,36 @@ async def update_settings(request: Request, username: str = Form(...), full_name
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # 1. Verify the new username isn't already taken by someone else
     cursor.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
     if cursor.fetchone():
         db.close()
         return RedirectResponse(url="/settings?error=That username is already taken.", status_code=303)
         
-    # 2. Password Change Logic
     if old_password or new_password or confirm_password:
-        # Check if they missed a field
         if not old_password or not new_password or not confirm_password:
             db.close()
             return RedirectResponse(url="/settings?error=Please fill out all 3 password fields to change your password.", status_code=303)
-            
-        # Check if new passwords match
         if new_password != confirm_password:
             db.close()
             return RedirectResponse(url="/settings?error=New passwords do not match.", status_code=303)
             
-        # Verify the OLD password is correct
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
         current_user = cursor.fetchone()
         if current_user['password_hash'] != old_password:
             db.close()
             return RedirectResponse(url="/settings?error=Incorrect old password.", status_code=303)
             
-        # If all checks pass, update everything including the password
         cursor.execute("UPDATE users SET username = %s, full_name = %s, password_hash = %s WHERE id = %s", (username, full_name, new_password, user_id))
     else:
-        # If password fields are blank, only update the profile text
         cursor.execute("UPDATE users SET username = %s, full_name = %s WHERE id = %s", (username, full_name, user_id))
         
-    # Update the active session variables so the sidebar refreshes instantly
     request.session['username'] = username
-    
     log_audit(username, "SYSTEM", f"User {username} updated their profile settings.")
     db.commit()
     db.close()
-    
     return RedirectResponse(url="/settings?success=Profile updated successfully!", status_code=303)
 
-# ==========================================
-# USER MANAGEMENT ROUTES (Admin Only)
-# ==========================================
-
-@app.get("/users", response_class=HTMLResponse)
+@app.get("/users", response_class=HTMLResponse, tags=["⚙️ User Administration"], summary="Manage Team Roles & Accounts")
 async def users_page(request: Request, error: str = None, success: str = None):
     if request.session.get('role') != 'admin': return RedirectResponse(url="/dashboard", status_code=303)
     db = get_db_connection()
@@ -653,7 +626,7 @@ async def users_page(request: Request, error: str = None, success: str = None):
     db.close()
     return templates.TemplateResponse(request, "users.html", {"request": request, "users": users_data, "user_count": len(users_data), "current_user": request.session.get('username'), "error": error, "success": success, "per_page": 4})
 
-@app.post("/users")
+@app.post("/users", tags=["⚙️ User Administration"], summary="Create New User Account")
 async def create_user(request: Request, username: str = Form(...), full_name: str = Form(...), role: str = Form(...), password: str = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -669,7 +642,7 @@ async def create_user(request: Request, username: str = Form(...), full_name: st
     db.close()
     return RedirectResponse(url="/users?error=Limit reached.", status_code=303)
 
-@app.post("/users/delete")
+@app.post("/users/delete", tags=["⚙️ User Administration"], summary="Deactivate User Account")
 async def remove_user(request: Request, user_id: int = Form(...)):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -677,3 +650,35 @@ async def remove_user(request: Request, user_id: int = Form(...)):
     db.commit()
     db.close()
     return RedirectResponse(url="/users?success=User deactivated.", status_code=303)
+
+# ==========================================
+# SYSTEM AUDIT ROUTE
+# ==========================================
+
+@app.get("/audit", response_class=HTMLResponse, tags=["📋 System Logs"], summary="View Audit Log & Access History")
+async def audit_page(request: Request, page_a: int = 1, page_l: int = 1):
+    if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    
+    records_per_page = 10
+    offset_a = (page_a - 1) * records_per_page
+    offset_l = (page_l - 1) * records_per_page
+    
+    cursor.execute("SELECT COUNT(*) as total FROM audit_log")
+    total_pages_a = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
+    cursor.execute("SELECT * FROM audit_log ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_a))
+    logs_data = cursor.fetchall()
+    
+    cursor.execute("SELECT COUNT(*) as total FROM login_history")
+    total_pages_l = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
+    cursor.execute("SELECT * FROM login_history ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_l))
+    logins_data = cursor.fetchall()
+    
+    db.close()
+    return templates.TemplateResponse(request, "audit.html", {
+        "logs": logs_data, "logins": logins_data, 
+        "current_page_a": page_a, "total_pages_a": total_pages_a,
+        "current_page_l": page_l, "total_pages_l": total_pages_l,
+        "per_page": records_per_page
+    })
