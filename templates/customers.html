@@ -1,11 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="page-title"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">👥</div> Customer Profiles</div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+    <div class="page-title" style="margin: 0;">
+        <div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">👥</div> Customer Profiles
+    </div>
+    
+    <form action="/customers" method="GET" style="display: flex; gap: 8px; margin: 0; align-items: center;">
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search across all records..." class="modern-input" style="padding: 10px 15px; width: 280px; font-size: 13px;">
+        <button type="submit" class="btn-leaf" style="padding: 10px 20px; height: auto;">🔍 Search</button>
+        {% if search_query %}
+            <a href="/customers" class="btn-leaf" style="padding: 10px 15px; background: #eee; color: #333; text-decoration: none; border: 1px solid #ccc;">✖ Clear</a>
+        {% endif %}
+    </form>
+</div>
 
 <div class="fixed-grid">
     <div class="fixed-card" style="flex: 1;">
         <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">🌟 Leaderboard</h3>
+        
         <div class="table-wrapper">
             {% for customer in customers %}
             <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee; height: 56px;">
@@ -13,9 +26,16 @@
                 <div style="flex: 1; overflow: hidden;"><div style="font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ customer.customer_name }}</div><div style="font-size: 11px; color: var(--text-muted);">{{ customer.total_orders }} orders · {{ customer.total_jars }} jars</div></div>
                 <div style="text-align: right; font-weight: bold; color: var(--leaf);">₱{{ "{:,.2f}".format(customer.total_spent) }}</div>
             </div>
+            {% else %}
+                <div style="text-align: center; color: #999; padding: 20px 0; font-size: 12px;">No customers found.</div>
             {% endfor %}
-            {% for i in range(per_page - customers|length) %}<div style="height: 56px; border-bottom: 1px solid transparent;"></div>{% endfor %}
+            
+            {% set remaining_customers = per_page - customers|length %}
+            {% if remaining_customers > 0 %}
+                {% for i in range(remaining_customers) %}<div style="height: 56px; border-bottom: 1px solid transparent;"></div>{% endfor %}
+            {% endif %}
         </div>
+        
         <div class="pagination-bar">
             {% set search_param = '&search=' + search_query if search_query else '' %}
             {% if current_page_l > 1 %} <a href="?page_l={{ current_page_l - 1 }}&page_t={{ current_page_t }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
@@ -25,15 +45,8 @@
     </div>
 
     <div class="fixed-card" style="flex: 2;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0; font-size: 14px; color: var(--text-muted);">🛒 Recent Transactions</h3>
-            <form action="/customers" method="GET" style="display: flex; gap: 5px; margin: 0;">
-                <input type="hidden" name="page_l" value="{{ current_page_l }}">
-                <input type="text" name="search" value="{{ search_query }}" placeholder="Search customer..." class="modern-input" style="padding: 6px 12px; width: 200px;">
-                <button type="submit" class="btn-leaf" style="padding: 6px 12px; width: auto;">Search</button>
-                {% if search_query %}<a href="/customers?page_l={{ current_page_l }}" class="btn-leaf" style="padding: 6px 12px; width: auto; background: #eee; color: #333; text-decoration: none; border: 1px solid #ccc;">Clear</a>{% endif %}
-            </form>
-        </div>
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">🛒 Completed Orders</h3>
+        
         <div class="table-wrapper">
             <table class="table-custom">
                 <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total</th></tr></thead>
@@ -45,11 +58,20 @@
                         <td style="line-height: 1.2; font-size: 11px;">{{ order.item_details | safe }}</td>
                         <td style="font-weight: 500; color: var(--leaf);">₱{{ "{:,.2f}".format(order.total_price) }}</td>
                     </tr>
+                    {% else %}
+                        <tr><td colspan="4" style="text-align: center; color: #999; padding: 20px 0;">No transactions found.</td></tr>
                     {% endfor %}
-                    {% for i in range(per_page - orders|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
+                    
+                    {% set remaining_orders = per_page - orders|length %}
+                    {% if remaining_orders > 0 %}
+                        {% for i in range(remaining_orders) %}
+                        <tr><td colspan="4" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
+        
         <div class="pagination-bar">
             {% if current_page_t > 1 %} <a href="?page_l={{ current_page_l }}&page_t={{ current_page_t - 1 }}{{ search_param }}" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
             <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page_t }} of {{ total_pages_t }}</span>

@@ -67,10 +67,21 @@
         font-size: 30px; margin: 0 auto 30px;
     }
     
+    /* UPDATED: Nav Link Styling */
     .nav-link {
-        opacity: 0.8; cursor: pointer; transition: opacity 0.2s;
+        opacity: 0.8; cursor: pointer; transition: all 0.2s ease;
+        padding: 6px 12px; border-radius: 20px;
     }
     .nav-link:hover { opacity: 1; }
+    
+    /* NEW: Active state class for the dynamic highlight */
+    .nav-active {
+        background: rgba(255, 255, 255, 0.2);
+        opacity: 1;
+    }
+    .nav-active:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
     
     /* Animation for smooth text transitions */
     .fade-content {
@@ -123,10 +134,10 @@
         </div>
 
         <div class="login-right">
-            <div style="position: absolute; top: 40px; right: 40px; display: flex; gap: 20px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; align-items: center;">
-                <span class="nav-link" onclick="switchContent('about')">About</span>
-                <span class="nav-link" onclick="switchContent('system')">System</span>
-                <span onclick="switchContent('welcome')" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">Sign In</span>
+            <div style="position: absolute; top: 40px; right: 40px; display: flex; gap: 5px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; align-items: center;">
+                <span id="nav-about" class="nav-link" onclick="switchContent('about')">About</span>
+                <span id="nav-system" class="nav-link" onclick="switchContent('system')">System</span>
+                <span id="nav-welcome" class="nav-link nav-active" onclick="switchContent('welcome')">Sign In</span>
             </div>
 
             <div id="content-welcome" class="fade-content" style="margin-top: auto; margin-bottom: 40px; text-align: right;">
@@ -157,13 +168,24 @@
 <script>
     // Panel Switching Logic
     function switchContent(panelId) {
+        // Hide all text contents
         document.getElementById('content-welcome').style.display = 'none';
         document.getElementById('content-about').style.display = 'none';
         document.getElementById('content-system').style.display = 'none';
         
+        // Remove the highlight class from ALL nav items
+        document.getElementById('nav-welcome').classList.remove('nav-active');
+        document.getElementById('nav-about').classList.remove('nav-active');
+        document.getElementById('nav-system').classList.remove('nav-active');
+        
+        // Show the correct text content
         const activePanel = document.getElementById('content-' + panelId);
         activePanel.style.display = 'block';
         
+        // Add the highlight class ONLY to the item that was just clicked
+        document.getElementById('nav-' + panelId).classList.add('nav-active');
+        
+        // Restart the fade-in animation
         activePanel.classList.remove('fade-content');
         void activePanel.offsetWidth; 
         activePanel.classList.add('fade-content');

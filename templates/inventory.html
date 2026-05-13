@@ -30,30 +30,60 @@
     </div>
 
     <div class="fixed-card" style="flex: 1;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">💸 Expense History</h3>
-        <div class="table-wrapper">
-            <table class="table-custom">
-                <thead><tr><th>Date</th><th>Ingredient & Amount</th><th>Total Cost</th></tr></thead>
-                <tbody>
-                    {% for record in history %}
+    <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">💸 Expense History</h3>
+    <div class="table-wrapper">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Date</th>
+                    <th style="width: 45%;">Ingredient & Amount</th>
+                    <th style="width: 25%;">Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in history %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 11px; white-space: normal; line-height: 1.4;">
+                        {{ record.created_at.strftime('%b %d, %Y') }}<br>
+                        {{ record.created_at.strftime('%I:%M %p') }}
+                    </td>
+                    <td style="white-space: normal; line-height: 1.4;">
+                        <strong style="font-size: 13px; color: var(--text-main);">{{ record.ingredient_name }}</strong><br>
+                        <span style="color: var(--leaf); font-weight: 600; font-size: 12px;">+{{ record.purchase_amount }} {{ record.purchase_unit }}</span>
+                    </td>
+                    <td style="font-weight: bold; color: #A32D2D; white-space: normal;">
+                        ₱{{ "{:,.2f}".format(record.cost) }}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% set remaining = per_page - history|length %}
+                {% if remaining > 0 %}
+                    {% for i in range(remaining) %}
                     <tr>
-                        <td style="color: var(--text-muted); font-size: 11px;">{{ record.created_at.strftime('%b %d, %Y') }}<br>{{ record.created_at.strftime('%I:%M %p') }}</td>
-                        <td><strong style="font-size: 13px; color: var(--text-main);">{{ record.ingredient_name }}</strong><br><span style="color: var(--leaf); font-weight: 600; font-size: 12px;">+{{ record.purchase_amount }} {{ record.purchase_unit }}</span></td>
-                        <td style="font-weight: bold; color: #A32D2D;">₱{{ "{:,.2f}".format(record.cost) }}</td>
+                        <td colspan="3" style="color: transparent; border-bottom: none; height: 45px;">-</td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - history|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="pagination-bar">
-            {% if current_page > 1 %} <a href="?page={{ current_page - 1 }}" class="btn-leaf">&larr; Previous</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Previous</span> {% endif %}
-            <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page }} of {{ total_pages }}</span>
-            {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="btn-leaf">Next &rarr;</a>
-            {% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
-        </div>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
+    <div class="pagination-bar">
+        {% if current_page > 1 %} 
+            <a href="?page={{ current_page - 1 }}" class="btn-leaf">&larr; Previous</a>
+        {% else %} 
+            <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Previous</span> 
+        {% endif %}
+        
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page }} of {{ total_pages }}</span>
+        
+        {% if current_page < total_pages %} 
+            <a href="?page={{ current_page + 1 }}" class="btn-leaf">Next &rarr;</a>
+        {% else %} 
+            <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> 
+        {% endif %}
+    </div>
+</div>
 </div>
 
 <div id="restockModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 36, 21, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
@@ -65,27 +95,36 @@
             </h3>
             <button onclick="closeModal()" class="btn-modal-close">✖</button>
         </div>
-        <form action="/inventory/purchase" method="POST">
+        
+        <form action="/inventory/purchase" method="POST" id="purchaseForm" onsubmit="confirmPurchase(event)">
+            
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Ingredient Type</label>
-                <select name="ingredient_id" class="modern-input">
-                    {% for item in ingredients %}{% if item.name not in ['Basil', 'Spinach', 'Malunggay', 'Mint'] %}<option value="{{ item.id }}">{{ item.name }} (buy per {{ item.purchase_unit }})</option>{% endif %}{% endfor %}
+                <select name="ingredient_id" id="ingredient_select" class="modern-input">
+                    {% for item in ingredients %}
+                        {% if item.name not in ['Basil', 'Spinach', 'Malunggay', 'Mint'] %}
+                            <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.purchase_unit }}">{{ item.name }} (buy per {{ item.purchase_unit }})</option>
+                        {% endif %}
+                    {% endfor %}
                 </select>
             </div>
+            
             <div style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
                     <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Amount Bought</label>
-                    <input type="number" name="purchase_amount" step="0.01" placeholder="e.g. 2.5" class="modern-input" required>
+                    <input type="number" name="purchase_amount" id="purchase_amount" step="0.01" placeholder="e.g. 2.5" class="modern-input" required>
                 </div>
                 <div style="flex: 1;">
                     <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Total Cost (₱)</label>
-                    <input type="number" name="cost" step="0.01" placeholder="e.g. 150.00" class="modern-input" required>
+                    <input type="number" name="cost" id="purchase_cost" step="0.01" placeholder="e.g. 150.00" class="modern-input" required>
                 </div>
             </div>
+            
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn-leaf" style="width: auto; padding: 10px 24px;">Add to Inventory</button>
             </div>
+            
         </form>
     </div>
 </div>
@@ -93,5 +132,25 @@
 <script>
     function openModal() { document.getElementById('restockModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('restockModal').style.display = 'none'; }
+
+    // Custom function to format the confirmation message dynamically based on user input
+    function confirmPurchase(event) {
+        event.preventDefault(); // Stop the form from submitting immediately
+        
+        // Grab the values the user typed in
+        const selectElement = document.getElementById('ingredient_select');
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        
+        const ingredientName = selectedOption.getAttribute('data-name');
+        const unit = selectedOption.getAttribute('data-unit');
+        const amount = document.getElementById('purchase_amount').value;
+        const cost = document.getElementById('purchase_cost').value;
+        
+        // Build a detailed confirmation message
+        const message = `Are you sure you want to add this to inventory?\n\n• Ingredient: ${ingredientName}\n• Quantity: ${amount} ${unit}\n• Total Cost: ₱${parseFloat(cost).toFixed(2)}\n\nThis will be permanently recorded in the expense history.`;
+        
+        // Use the built-in modal from base.html
+        showConfirmModal(event, message, false);
+    }
 </script>
 {% endblock %}

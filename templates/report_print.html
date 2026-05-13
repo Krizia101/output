@@ -23,10 +23,10 @@
         
         .meta-data { text-align: right; font-size: 11px; color: #666; line-height: 1.6; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 40px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; }
         .kpi-box { background: #F4F7F2; padding: 20px; border-radius: 8px; border: 1px solid #EAF3DE; text-align: center; }
         .kpi-title { font-size: 10px; text-transform: uppercase; color: #6B7A62; font-weight: bold; margin-bottom: 5px; }
-        .kpi-value { font-size: 24px; font-weight: 900; color: #3B6D11; }
+        .kpi-value { font-size: 22px; font-weight: 900; color: #3B6D11; }
 
         .section-title { font-size: 16px; font-weight: 700; color: #1A2415; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; align-items: center; gap: 10px; }
         
@@ -42,9 +42,7 @@
         @media print {
             body { background: white; padding: 0; }
             .document { box-shadow: none; max-width: 100%; padding: 20px; }
-            /* Force background colors to print */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            /* Prevent tables from breaking across pages awkwardly */
             table { page-break-inside: auto; }
             tr { page-break-inside: avoid; page-break-after: auto; }
             .no-print { display: none; }
@@ -72,12 +70,16 @@
 
         <div class="kpi-grid">
             <div class="kpi-box">
-                <div class="kpi-title">Gross Revenue (Completed)</div>
+                <div class="kpi-title">Gross Revenue</div>
                 <div class="kpi-value">₱{{ "{:,.2f}".format(kpis.total_revenue or 0) }}</div>
             </div>
-            <div class="kpi-box">
-                <div class="kpi-title">Total Orders Fulfilled</div>
-                <div class="kpi-value">{{ kpis.total_orders or 0 }}</div>
+            <div class="kpi-box" style="background: #FCEBEB; border-color: #F09595;">
+                <div class="kpi-title" style="color: #A32D2D;">Total Expenses</div>
+                <div class="kpi-value" style="color: #A32D2D;">₱{{ "{:,.2f}".format(kpis.total_expenses or 0) }}</div>
+            </div>
+            <div class="kpi-box" style="background: #EAF3DE; border-color: #C0DD97;">
+                <div class="kpi-title" style="color: #3B6D11;">Net Profit</div>
+                <div class="kpi-value" style="color: #3B6D11;">₱{{ "{:,.2f}".format(kpis.net_profit or 0) }}</div>
             </div>
             <div class="kpi-box">
                 <div class="kpi-title">Total Jars Sold</div>
@@ -98,6 +100,22 @@
                 </tr>
                 {% else %}
                 <tr><td colspan="4" style="text-align: center;">No completed sales data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="section-title">💸 Monthly Expenses Summary</div>
+        <table>
+            <thead><tr><th>Month & Year</th><th>Restock Transactions</th><th>Total Expense</th></tr></thead>
+            <tbody>
+                {% for row in monthly_expenses %}
+                <tr>
+                    <td style="font-weight: 600; color: #1A2415;">{{ row.period }}</td>
+                    <td>{{ row.total_transactions }} receipts</td>
+                    <td style="font-weight: 700; color: #A32D2D;">₱{{ "{:,.2f}".format(row.total_expense) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" style="text-align: center;">No expenses logged yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

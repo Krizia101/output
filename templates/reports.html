@@ -10,6 +10,7 @@
         <button onclick="switchTab('weekly')" id="btn-weekly" class="btn-leaf" style="background:#eee; color:#333;">📅 Weekly</button>
         <button onclick="switchTab('monthly')" id="btn-monthly" class="btn-leaf" style="background:#eee; color:#333;">📆 Monthly</button>
         <button onclick="switchTab('payments')" id="btn-payments" class="btn-leaf" style="background:#eee; color:#333;">💳 Payments</button>
+        <button onclick="switchTab('expenses')" id="btn-expenses" class="btn-leaf" style="background:#eee; color:#333;">💸 Expenses</button>
         <a href="/reports/print" target="_blank" class="btn-leaf" style="background: #0C447C;">🖨️ Export PDF Report</a>
     </div>
 </div>
@@ -35,7 +36,8 @@
                 {% for row in weekly %}
                 <tr><td style="font-weight:bold;">{{ row.period }}</td><td>{{ row.total_orders }}</td><td>{{ row.total_jars }}</td><td style="color:var(--leaf); font-weight:bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td></tr>
                 {% endfor %}
-                {% for i in range(per_page - weekly|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
+                {% set remaining_weekly = per_page - weekly|length %}
+                {% if remaining_weekly > 0 %}{% for i in range(remaining_weekly) %}<tr><td colspan="4" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>{% endfor %}{% endif %}
             </tbody>
         </table>
     </div>
@@ -55,7 +57,8 @@
                 {% for row in monthly %}
                 <tr><td style="font-weight:bold;">{{ row.period }}</td><td>{{ row.total_orders }}</td><td>{{ row.total_jars }}</td><td style="color:var(--leaf); font-weight:bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td></tr>
                 {% endfor %}
-                {% for i in range(per_page - monthly|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
+                {% set remaining_monthly = per_page - monthly|length %}
+                {% if remaining_monthly > 0 %}{% for i in range(remaining_monthly) %}<tr><td colspan="4" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>{% endfor %}{% endif %}
             </tbody>
         </table>
     </div>
@@ -75,7 +78,8 @@
                 {% for row in payments %}
                 <tr><td><span style="background: #E6F1FB; color: #0C447C; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px;">{{ row.payment_method }}</span></td><td>{{ row.total_orders }}</td><td style="color:var(--leaf); font-weight:bold;">₱{{ "{:,.2f}".format(row.total_revenue) }}</td></tr>
                 {% endfor %}
-                {% for i in range(per_page - payments|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
+                {% set remaining_payments = per_page - payments|length %}
+                {% if remaining_payments > 0 %}{% for i in range(remaining_payments) %}<tr><td colspan="3" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>{% endfor %}{% endif %}
             </tbody>
         </table>
     </div>
@@ -86,6 +90,31 @@
     </div>
 </div>
 
+<div id="tab-expenses" class="fixed-card" style="display: none; flex-direction: column; flex: 1;">
+    <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">💸 Monthly Expenses Report</h3>
+    <div class="table-wrapper">
+        <table class="table-custom">
+            <thead><tr><th>Period</th><th>Restock Transactions</th><th>Total Expense</th></tr></thead>
+            <tbody>
+                {% for row in expenses %}
+                <tr>
+                    <td style="font-weight:bold;">{{ row.period }}</td>
+                    <td>{{ row.total_transactions }} receipts</td>
+                    <td style="color:#A32D2D; font-weight:bold;">₱{{ "{:,.2f}".format(row.total_expense) }}</td>
+                </tr>
+                {% endfor %}
+                {% set remaining_expenses = per_page - expenses|length %}
+                {% if remaining_expenses > 0 %}{% for i in range(remaining_expenses) %}<tr><td colspan="3" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>{% endfor %}{% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination-bar">
+        {% if current_page > 1 %} <a href="?page={{ current_page - 1 }}&tab=expenses" class="btn-leaf">&larr; Prev</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">&larr; Prev</span> {% endif %}
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Page {{ current_page }} of {{ total_pages }}</span>
+        {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}&tab=expenses" class="btn-leaf">Next &rarr;</a>{% else %} <span class="btn-leaf" style="background: #eee; color: #ccc; cursor: not-allowed;">Next &rarr;</span> {% endif %}
+    </div>
+</div>
+
 <script>
     let chartWeekly, chartMonthly, chartPayment;
     function switchTab(tabId) {
@@ -93,11 +122,18 @@
         document.getElementById('tab-weekly').style.display = 'none';
         document.getElementById('tab-monthly').style.display = 'none';
         document.getElementById('tab-payments').style.display = 'none';
-        ['btn-charts', 'btn-weekly', 'btn-monthly', 'btn-payments'].forEach(btn => { document.getElementById(btn).style.background = '#eee'; document.getElementById(btn).style.color = '#333'; });
+        document.getElementById('tab-expenses').style.display = 'none';
+        
+        ['btn-charts', 'btn-weekly', 'btn-monthly', 'btn-payments', 'btn-expenses'].forEach(btn => { 
+            document.getElementById(btn).style.background = '#eee'; 
+            document.getElementById(btn).style.color = '#333'; 
+        });
+        
         const displayType = (tabId === 'charts') ? 'flex' : 'flex';
         document.getElementById('tab-' + tabId).style.display = displayType;
         document.getElementById('btn-' + tabId).style.background = 'var(--leaf)';
         document.getElementById('btn-' + tabId).style.color = 'white';
+        
         if (tabId === 'charts') {
             if (chartWeekly) chartWeekly.resize();
             if (chartMonthly) chartMonthly.resize();
@@ -107,6 +143,7 @@
         url.searchParams.set('tab', tabId);
         window.history.pushState({}, '', url);
     }
+    
     window.addEventListener('DOMContentLoaded', () => {
         switchTab("{{ active_tab }}");
         chartMonthly = new Chart(document.getElementById('monthlyChart').getContext('2d'), { type: 'line', data: { labels: [{% for row in monthly_chart|reverse %}"{{ row.period }}",{% endfor %}], datasets: [{ label: 'Revenue (₱)', data: [{% for row in monthly_chart|reverse %}{{ row.total_revenue }},{% endfor %}], borderColor: '#0C447C', backgroundColor: 'rgba(12, 68, 124, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: {display: true, text: 'Monthly Revenue', font: {size: 13}} } } });

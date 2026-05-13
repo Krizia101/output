@@ -22,7 +22,13 @@
                         </td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - wip_batches|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
+
+                    {% set remaining_wip = per_page - wip_batches|length %}
+                    {% if remaining_wip > 0 %}
+                        {% for i in range(remaining_wip) %}
+                        <tr><td colspan="3" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -48,7 +54,13 @@
                         <td style="color: var(--leaf); font-weight: bold;">+{{ batch.jars_produced }}</td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - completed_batches|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
+                    
+                    {% set remaining_completed = per_page - completed_batches|length %}
+                    {% if remaining_completed > 0 %}
+                        {% for i in range(remaining_completed) %}
+                        <tr><td colspan="3" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>

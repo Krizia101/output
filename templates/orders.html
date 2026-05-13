@@ -3,19 +3,29 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
     <div class="page-title" style="margin-bottom: 0;"><div class="leaf-logo" style="background:var(--leaf-light); color:var(--leaf);">🛒</div> Order Management</div>
-    <button onclick="openOrderModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">➕ Create Customer Order</button>
+    <button onclick="openOrderModal()" class="btn-leaf" style="width: auto; padding: 10px 20px;">+ Create Customer Order</button>
 </div>
 
 <div class="fixed-grid">
-    <div class="fixed-card" style="flex: 1;">
+    <div class="fixed-card" style="flex: 1.2;">
         <h3 style="margin-bottom: 15px; font-size: 14px; color: #854F0B;">⏳ Pending Queue</h3>
         <div class="table-wrapper">
             <table class="table-custom">
-                <thead><tr style="background-color: #FFF3CD;"><th style="width: 35%;">Customer</th><th style="width: 30%;">Total</th><th style="width: 35%;">Action</th></tr></thead>
+                <thead>
+                    <tr style="background-color: #FFF3CD;">
+                        <th style="width: 25%;">Customer</th>
+                        <th style="width: 35%;">Items</th>
+                        <th style="width: 20%;">Total</th>
+                        <th style="width: 20%;">Action</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for order in pending_orders %}
                     <tr>
-                        <td style="font-weight: 600;">{{ order.customer_name }}</td>
+                        <td style="font-weight: 600; white-space: normal; line-height: 1.2;">{{ order.customer_name }}</td>
+                        <td style="font-size: 11px; color: var(--text-muted); line-height: 1.4; white-space: normal;">
+                            {{ order.item_details | safe }}
+                        </td>
                         <td style="color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
                         <td>
                             <div style="display: flex; gap: 5px;">
@@ -35,7 +45,13 @@
                         </td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - pending_orders|length) %}<tr><td colspan="3" style="color: transparent;">-</td></tr>{% endfor %}
+                    
+                    {% set remaining_pending = per_page - pending_orders|length %}
+                    {% if remaining_pending > 0 %}
+                        {% for i in range(remaining_pending) %}
+                        <tr><td colspan="4" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -48,21 +64,37 @@
         </div>
     </div>
 
-    <div class="fixed-card" style="flex: 1.2;">
-        <h3 style="margin-bottom: 15px; font-size: 14px; color: #3B6D11;">✅ Completed Orders</h3>
+    <div class="fixed-card" style="flex: 1;">
+        <h3 style="margin-bottom: 15px; font-size: 14px; color: #3B6D11;">💳 Recent Transactions <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">(Past 7 Days)</span></h3>
         <div class="table-wrapper">
             <table class="table-custom">
-                <thead><tr style="background-color: #EAF3DE;"><th style="width: 20%;">Date</th><th style="width: 40%;">Customer</th><th style="width: 20%;">Total</th><th style="width: 20%;">Method</th></tr></thead>
+                <thead>
+                    <tr style="background-color: #EAF3DE;">
+                        <th style="width: 25%;">Date & Time</th>
+                        <th style="width: 25%;">Customer</th>
+                        <th style="width: 30%;">Items</th>
+                        <th style="width: 20%;">Total</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for order in completed_orders %}
                     <tr>
-                        <td style="font-size: 11px; color: var(--text-muted);">{{ order.created_at.strftime('%b %d') }}</td>
-                        <td style="font-weight: 500;">{{ order.customer_name }}</td>
+                        <td style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+                            {{ order.created_at.strftime('%b %d, %Y') }}<br>
+                            {{ order.created_at.strftime('%I:%M %p') }}
+                        </td>
+                        <td style="font-weight: 600;">{{ order.customer_name }}</td>
+                        <td style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">{{ order.item_details | safe }}</td>
                         <td style="color: var(--leaf); font-weight: bold;">₱{{ "{:,.2f}".format(order.total_price) }}</td>
-                        <td><span style="background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">{{ order.payment_method }}</span></td>
                     </tr>
                     {% endfor %}
-                    {% for i in range(per_page - completed_orders|length) %}<tr><td colspan="4" style="color: transparent;">-</td></tr>{% endfor %}
+                    
+                    {% set remaining_completed = per_page - completed_orders|length %}
+                    {% if remaining_completed > 0 %}
+                        {% for i in range(remaining_completed) %}
+                        <tr><td colspan="4" style="color: transparent; border-bottom: none; height: 45px;">-</td></tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
