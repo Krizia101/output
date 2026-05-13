@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: May 12, 2026 at 03:43 AM
+-- Generation Time: May 13, 2026 at 12:10 PM
 -- Server version: 8.4.7
 -- PHP Version: 8.3.28
 
@@ -30,12 +30,12 @@ SET time_zone = "+00:00";
 DROP TABLE IF EXISTS `audit_log`;
 CREATE TABLE IF NOT EXISTS `audit_log` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `action_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `action_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=101 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `audit_log`
@@ -101,7 +101,33 @@ INSERT INTO `audit_log` (`id`, `username`, `action_type`, `description`, `create
 (97, 'admin', 'PRODUCTION', 'Started batch of 5 jars.', '2026-05-12 03:36:27'),
 (98, 'admin', 'PRODUCTION', 'Batch #22 marked Completed.', '2026-05-12 03:36:41'),
 (99, 'admin', 'SYSTEM', 'Created packaging account.', '2026-05-12 03:40:33'),
-(100, 'admin', 'SYSTEM', 'Created production account.', '2026-05-12 03:42:13');
+(100, 'admin', 'SYSTEM', 'Created production account.', '2026-05-12 03:42:13'),
+(101, 'admin', 'PRODUCTION', 'Started batch of 15 jars.', '2026-05-13 07:31:31'),
+(102, 'admin', 'PRODUCTION', 'Batch #23 marked Completed.', '2026-05-13 07:31:45'),
+(103, 'admin', 'PRODUCTION', 'Started batch of 8 jars.', '2026-05-13 07:32:19'),
+(104, 'admin', 'PRODUCTION', 'Batch #24 marked Completed.', '2026-05-13 07:32:26'),
+(105, 'admin', 'SALE', 'Order #14 created for Maria Santos. Total: ₱150.0. Items: 1x Spinach Basil Pesto.', '2026-05-13 08:16:44'),
+(106, 'admin', 'SALE', 'Order #15 created for Krizia Bioco. Total: ₱300.0. Items: 1x Malunggay Basil Pesto, 1x Mint Basil Pesto.', '2026-05-13 08:17:05'),
+(107, 'admin', 'SALE', 'Order #16 created for Jhosa Mae. Total: ₱600.0. Items: 4x Spinach Basil Pesto.', '2026-05-13 08:17:17'),
+(108, 'admin', 'SALE', 'Order #17 created for Hannah Adaza. Total: ₱450.0. Items: 3x Malunggay Basil Pesto.', '2026-05-13 08:34:41'),
+(109, 'admin', 'RESTOCK', 'Purchased 2.0 L of Olive Oil for ₱145.0.', '2026-05-13 10:20:21'),
+(110, 'admin', 'SALE', 'Order #18 created for Maria Santos. Total: ₱150.0. Items: 1x Spinach Basil Pesto.', '2026-05-13 10:34:39'),
+(111, 'admin', 'HARVEST', 'Harvested 10.0 harvest of Basil.', '2026-05-13 11:22:02'),
+(112, 'admin', 'RESTOCK', 'Purchased 5.0 L of Olive Oil for ₱170.0.', '2026-05-13 11:25:58'),
+(113, 'admin', 'RESTOCK', 'Purchased 25.0 block of Eden Cheese for ₱3625.0.', '2026-05-13 11:34:32'),
+(114, 'admin', 'HARVEST', 'Harvested 15.0 harvest of Basil.', '2026-05-13 11:34:51'),
+(115, 'admin', 'HARVEST', 'Harvested 15.0 harvest of Spinach.', '2026-05-13 11:34:58'),
+(116, 'admin', 'HARVEST', 'Harvested 15.0 harvest of Malunggay.', '2026-05-13 11:35:06'),
+(117, 'admin', 'HARVEST', 'Harvested 15.0 harvest of Mint.', '2026-05-13 11:35:14'),
+(118, 'Mary', 'SYSTEM', 'User Mary updated their profile settings.', '2026-05-13 11:41:03'),
+(119, 'admin', 'SALE', 'Order #19 created for Princess Brazil. Total: ₱450.0. Items: 2x Spinach Basil Pesto, 1x Mint Basil Pesto.', '2026-05-13 11:46:50'),
+(120, 'admin', 'UNDO', 'Cancelled Order #18 and returned items.', '2026-05-13 11:47:00'),
+(121, 'admin', 'RESTOCK', 'Purchased 5.0 L of Olive Oil for ₱75.0.', '2026-05-13 11:48:25'),
+(122, 'admin', 'HARVEST', 'Harvested 5.0 harvest of Spinach.', '2026-05-13 11:48:46'),
+(123, 'admin', 'PRODUCTION', 'Started batch of 3 jars.', '2026-05-13 11:49:11'),
+(124, 'admin', 'PRODUCTION', 'Batch #25 marked Completed.', '2026-05-13 11:49:22'),
+(125, 'admin', 'SYSTEM', 'Created production account.', '2026-05-13 11:51:33'),
+(126, 'Aurora', 'SYSTEM', 'User Aurora updated their profile settings.', '2026-05-13 11:52:23');
 
 -- --------------------------------------------------------
 
@@ -150,54 +176,36 @@ INSERT INTO `bill_of_materials` (`id`, `product_id`, `ingredient_id`, `quantity_
 -- --------------------------------------------------------
 
 --
--- Table structure for table `harvest_log`
---
-
-DROP TABLE IF EXISTS `harvest_log`;
-CREATE TABLE IF NOT EXISTS `harvest_log` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `ingredient_id` int NOT NULL,
-  `quantity_cups` decimal(10,2) NOT NULL,
-  `harvest_date` date NOT NULL,
-  `notes` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `ingredient_id` (`ingredient_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `ingredients`
 --
 
 DROP TABLE IF EXISTS `ingredients`;
 CREATE TABLE IF NOT EXISTS `ingredients` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `purchase_unit` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `usage_unit` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `purchase_unit` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `usage_unit` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `conversion_factor` decimal(10,2) NOT NULL,
   `current_stock_usage` decimal(10,2) DEFAULT '0.00',
   `low_stock_threshold` decimal(10,2) DEFAULT '10.00',
   PRIMARY KEY (`id`)
-) ;
+) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredients`
 --
 
 INSERT INTO `ingredients` (`id`, `name`, `category`, `purchase_unit`, `usage_unit`, `conversion_factor`, `current_stock_usage`, `low_stock_threshold`) VALUES
-(1, 'Peanuts', 'Nuts', 'kg', 'cups', 7.50, 190.50, 10.00),
-(2, 'Garlic', 'Condiments', 'kg', 'bulbs', 25.00, 685.00, 15.00),
-(3, 'Olive Oil', 'Oils', 'L', 'cups', 4.17, 57.65, 20.00),
-(4, 'Basil', 'Herbs', 'harvest', 'cups', 1.00, 25.50, 15.00),
-(5, 'Spinach', 'Herbs', 'harvest', 'cups', 1.00, 36.25, 10.00),
-(6, 'Eden Cheese', 'Dairy', 'block', 'quarter_block', 4.00, 23.00, 4.00),
-(7, 'Malunggay', 'Herbs', 'harvest', 'cups', 1.00, 26.00, 10.00),
-(8, 'Mint', 'Herbs', 'harvest', 'cups', 1.00, 30.00, 10.00),
-(9, 'Glass Jars', 'Packaging', 'box', 'pcs', 24.00, 655.00, 48.00);
+(1, 'Peanuts', 'Nuts', 'kg', 'cups', 7.50, 138.50, 10.00),
+(2, 'Garlic', 'Condiments', 'kg', 'bulbs', 25.00, 659.00, 15.00),
+(3, 'Olive Oil', 'Oils', 'L', 'cups', 4.17, 55.69, 20.00),
+(4, 'Basil', 'Herbs', 'harvest', 'cups', 1.00, 37.50, 15.00),
+(5, 'Spinach', 'Herbs', 'harvest', 'cups', 1.00, 56.25, 10.00),
+(6, 'Eden Cheese', 'Dairy', 'block', 'quarter_block', 4.00, 97.00, 4.00),
+(7, 'Malunggay', 'Herbs', 'harvest', 'cups', 1.00, 23.00, 10.00),
+(8, 'Mint', 'Herbs', 'harvest', 'cups', 1.00, 37.00, 10.00),
+(9, 'Glass Jars', 'Packaging', 'box', 'pcs', 24.00, 629.00, 48.00);
 
 -- --------------------------------------------------------
 
@@ -212,10 +220,10 @@ CREATE TABLE IF NOT EXISTS `ingredient_purchases` (
   `purchase_amount` decimal(10,2) NOT NULL,
   `cost` decimal(10,2) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `restock_type` enum('purchase','harvest') COLLATE utf8mb4_unicode_ci DEFAULT 'purchase',
+  `restock_type` enum('purchase','harvest') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'purchase',
   PRIMARY KEY (`id`),
   KEY `ingredient_id` (`ingredient_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `ingredient_purchases`
@@ -238,7 +246,17 @@ INSERT INTO `ingredient_purchases` (`id`, `ingredient_id`, `purchase_amount`, `c
 (25, 3, 20.00, 250.00, '2026-05-11 11:13:36', 'purchase'),
 (26, 1, 5.00, 190.00, '2026-05-12 03:07:00', 'purchase'),
 (27, 4, 8.00, 0.00, '2026-05-12 03:07:34', 'harvest'),
-(28, 3, 5.00, 250.00, '2026-05-12 03:33:47', 'purchase');
+(28, 3, 5.00, 250.00, '2026-05-12 03:33:47', 'purchase'),
+(29, 3, 2.00, 145.00, '2026-05-13 10:20:21', 'purchase'),
+(30, 4, 10.00, 0.00, '2026-05-13 11:22:02', 'harvest'),
+(31, 3, 5.00, 170.00, '2026-05-13 11:25:58', 'purchase'),
+(32, 6, 25.00, 3625.00, '2026-05-13 11:34:32', 'purchase'),
+(33, 4, 15.00, 0.00, '2026-05-13 11:34:51', 'harvest'),
+(34, 5, 15.00, 0.00, '2026-05-13 11:34:58', 'harvest'),
+(35, 7, 15.00, 0.00, '2026-05-13 11:35:06', 'harvest'),
+(36, 8, 15.00, 0.00, '2026-05-13 11:35:14', 'harvest'),
+(37, 3, 5.00, 75.00, '2026-05-13 11:48:25', 'purchase'),
+(38, 5, 5.00, 0.00, '2026-05-13 11:48:46', 'harvest');
 
 -- --------------------------------------------------------
 
@@ -249,12 +267,12 @@ INSERT INTO `ingredient_purchases` (`id`, `ingredient_id`, `purchase_amount`, `c
 DROP TABLE IF EXISTS `login_history`;
 CREATE TABLE IF NOT EXISTS `login_history` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `action` enum('login','logout','failed_attempt') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `action` enum('login','logout','failed_attempt') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=106 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=136 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `login_history`
@@ -359,7 +377,37 @@ INSERT INTO `login_history` (`id`, `username`, `action`, `ip_address`, `created_
 (102, 'admin', 'logout', '127.0.0.1', '2026-05-12 03:42:24'),
 (103, 'Mary', 'login', '127.0.0.1', '2026-05-12 03:42:35'),
 (104, 'Mary', 'logout', '127.0.0.1', '2026-05-12 03:42:51'),
-(105, 'admin', 'login', '127.0.0.1', '2026-05-12 03:42:58');
+(105, 'admin', 'login', '127.0.0.1', '2026-05-12 03:42:58'),
+(106, 'admin', 'login', '127.0.0.1', '2026-05-13 06:36:20'),
+(107, 'admin', 'logout', '127.0.0.1', '2026-05-13 07:02:44'),
+(108, 'admin', 'login', '127.0.0.1', '2026-05-13 07:05:03'),
+(109, 'admin', 'logout', '127.0.0.1', '2026-05-13 07:05:49'),
+(110, 'admin', 'login', '127.0.0.1', '2026-05-13 07:10:40'),
+(111, 'admin', 'logout', '127.0.0.1', '2026-05-13 07:10:44'),
+(112, 'admin', 'login', '127.0.0.1', '2026-05-13 07:10:55'),
+(113, 'admin', 'login', '127.0.0.1', '2026-05-13 07:13:23'),
+(114, 'admin', 'logout', '127.0.0.1', '2026-05-13 07:13:30'),
+(115, 'admin', 'login', '127.0.0.1', '2026-05-13 07:15:01'),
+(116, 'admin', 'logout', '127.0.0.1', '2026-05-13 07:19:10'),
+(117, 'admin', 'login', '127.0.0.1', '2026-05-13 07:19:20'),
+(118, 'admin', 'logout', '127.0.0.1', '2026-05-13 11:16:00'),
+(119, 'Mary', 'login', '127.0.0.1', '2026-05-13 11:16:12'),
+(120, 'Mary', 'logout', '127.0.0.1', '2026-05-13 11:16:42'),
+(121, 'admin', 'login', '127.0.0.1', '2026-05-13 11:20:56'),
+(122, 'admin', 'logout', '127.0.0.1', '2026-05-13 11:40:17'),
+(123, 'Mary', 'login', '127.0.0.1', '2026-05-13 11:40:25'),
+(124, 'Mary', 'logout', '127.0.0.1', '2026-05-13 11:41:08'),
+(125, 'Mary', 'failed_attempt', '127.0.0.1', '2026-05-13 11:41:16'),
+(126, 'Mary', 'login', '127.0.0.1', '2026-05-13 11:41:26'),
+(127, 'Mary', 'logout', '127.0.0.1', '2026-05-13 11:41:29'),
+(128, 'admin', 'login', '127.0.0.1', '2026-05-13 11:43:12'),
+(129, 'admin', 'logout', '127.0.0.1', '2026-05-13 11:43:16'),
+(130, 'admin', 'failed_attempt', '127.0.0.1', '2026-05-13 11:45:52'),
+(131, 'admin', 'login', '127.0.0.1', '2026-05-13 11:46:02'),
+(132, 'admin', 'logout', '127.0.0.1', '2026-05-13 11:51:45'),
+(133, 'Aurora', 'login', '127.0.0.1', '2026-05-13 11:51:53'),
+(134, 'Aurora', 'logout', '127.0.0.1', '2026-05-13 11:52:50'),
+(135, 'admin', 'login', '127.0.0.1', '2026-05-13 11:52:58');
 
 -- --------------------------------------------------------
 
@@ -370,14 +418,14 @@ INSERT INTO `login_history` (`id`, `username`, `action`, `ip_address`, `created_
 DROP TABLE IF EXISTS `orders`;
 CREATE TABLE IF NOT EXISTS `orders` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `customer_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `customer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `total_price` decimal(10,2) NOT NULL,
-  `payment_method` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payment_status` enum('paid','unpaid') COLLATE utf8mb4_unicode_ci DEFAULT 'unpaid',
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payment_status` enum('paid','unpaid') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'unpaid',
+  `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `orders`
@@ -387,10 +435,16 @@ INSERT INTO `orders` (`id`, `customer_name`, `total_price`, `payment_method`, `p
 (9, 'Jhosa Mae', 450.00, 'GCash', 'paid', 'completed', '2026-05-11 11:32:40'),
 (8, 'Krizia Bioco', 750.00, 'Bank Transfer', 'paid', 'completed', '2026-05-11 11:02:50'),
 (7, 'Hannah Adaza', 450.00, 'Cash', 'paid', 'completed', '2026-05-06 15:07:10'),
-(10, 'Mheljoy Erorita', 1500.00, 'Cash', NULL, 'pending', '2026-05-11 11:35:16'),
+(10, 'Mheljoy Erorita', 1500.00, 'Cash', 'paid', 'completed', '2026-05-11 11:35:16'),
 (11, 'Tricia Mae', 150.00, 'Cash', 'paid', 'completed', '2026-05-12 03:05:11'),
 (12, 'Hannah Adaza', 750.00, 'Cash', 'paid', 'completed', '2026-05-12 03:15:01'),
-(13, 'Mark Lee', 450.00, 'Bank Transfer', 'paid', 'completed', '2026-05-12 03:31:18');
+(13, 'Mark Lee', 450.00, 'Bank Transfer', 'paid', 'completed', '2026-05-12 03:31:18'),
+(14, 'Maria Santos', 150.00, 'Cash', 'paid', 'completed', '2026-05-13 08:16:44'),
+(15, 'Krizia Bioco', 300.00, 'Bank Transfer', 'paid', 'completed', '2026-05-13 08:17:05'),
+(16, 'Jhosa Mae', 600.00, 'Cash', 'paid', 'completed', '2026-05-13 08:17:17'),
+(17, 'Hannah Adaza', 450.00, 'GCash', 'paid', 'completed', '2026-05-13 08:34:41'),
+(18, 'Maria Santos', 150.00, 'Cash', 'unpaid', 'cancelled', '2026-05-13 10:34:38'),
+(19, 'Princess Brazil', 450.00, 'GCash', 'paid', 'completed', '2026-05-13 11:46:50');
 
 -- --------------------------------------------------------
 
@@ -408,7 +462,7 @@ CREATE TABLE IF NOT EXISTS `order_items` (
   PRIMARY KEY (`id`),
   KEY `order_id` (`order_id`),
   KEY `product_id` (`product_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `order_items`
@@ -422,7 +476,15 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `subtotal
 (11, 7, 2, 1, 150.00),
 (10, 7, 1, 2, 300.00),
 (16, 12, 2, 5, 750.00),
-(17, 13, 2, 3, 450.00);
+(17, 13, 2, 3, 450.00),
+(18, 14, 1, 1, 150.00),
+(19, 15, 2, 1, 150.00),
+(20, 15, 3, 1, 150.00),
+(21, 16, 1, 4, 600.00),
+(22, 17, 2, 3, 450.00),
+(23, 18, 1, 1, 150.00),
+(24, 19, 1, 2, 300.00),
+(25, 19, 3, 1, 150.00);
 
 -- --------------------------------------------------------
 
@@ -435,11 +497,11 @@ CREATE TABLE IF NOT EXISTS `production_batches` (
   `id` int NOT NULL AUTO_INCREMENT,
   `product_id` int NOT NULL,
   `jars_produced` int NOT NULL,
-  `status` enum('in_progress','completed','needs_restock') COLLATE utf8mb4_unicode_ci DEFAULT 'completed',
+  `status` enum('in_progress','completed','needs_restock') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'completed',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `product_id` (`product_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `production_batches`
@@ -457,7 +519,10 @@ INSERT INTO `production_batches` (`id`, `product_id`, `jars_produced`, `status`,
 (19, 1, 10, 'completed', '2026-05-12 03:08:18'),
 (20, 3, 10, 'completed', '2026-05-12 03:10:58'),
 (21, 3, 5, 'completed', '2026-05-12 03:26:00'),
-(22, 2, 5, 'completed', '2026-05-12 03:36:27');
+(22, 2, 5, 'completed', '2026-05-12 03:36:27'),
+(23, 2, 15, 'completed', '2026-05-13 07:31:31'),
+(24, 3, 8, 'completed', '2026-05-13 07:32:19'),
+(25, 2, 3, 'completed', '2026-05-13 11:49:11');
 
 -- --------------------------------------------------------
 
@@ -468,20 +533,20 @@ INSERT INTO `production_batches` (`id`, `product_id`, `jars_produced`, `status`,
 DROP TABLE IF EXISTS `products`;
 CREATE TABLE IF NOT EXISTS `products` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(10,2) NOT NULL DEFAULT '150.00',
   `current_stock_jars` int DEFAULT '0',
   PRIMARY KEY (`id`)
-) ;
+) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `products`
 --
 
 INSERT INTO `products` (`id`, `name`, `price`, `current_stock_jars`) VALUES
-(1, 'Spinach Basil Pesto', 150.00, 34),
-(2, 'Malunggay Basil Pesto', 150.00, 15),
-(3, 'Mint Basil Pesto', 150.00, 20);
+(1, 'Spinach Basil Pesto', 150.00, 27),
+(2, 'Malunggay Basil Pesto', 150.00, 29),
+(3, 'Mint Basil Pesto', 150.00, 26);
 
 -- --------------------------------------------------------
 
@@ -536,25 +601,22 @@ INSERT INTO `recipes` (`id`, `product_id`, `ingredient_id`, `amount_needed`) VAL
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `full_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` enum('admin','coordinator','packaging','production') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('active','inactive') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `full_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `role` enum('admin','coordinator','packaging','production') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=MyISAM AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
 --
 
 INSERT INTO `users` (`id`, `username`, `full_name`, `role`, `password_hash`, `status`, `created_at`) VALUES
-(1, 'admin', 'Krizia Antonette U. Bioco', 'admin', '$2b$12$BVOJORogwmQRgLxVNQGsBOh3gMEx71sw.JUPBQBu3AMvj0s4bJ0aW', 'active', '2026-05-06 05:09:54'),
-(11, 'Mary', 'Mary Bennet', 'production', '$2b$12$QVyg/OltdRGOid6gO9CQc.KBFbEqdzV0beKl1K90c6bTcXoG7sHxq', 'active', '2026-05-12 03:42:13'),
-(10, 'Jhosa', 'Jhosa Mae', 'packaging', '$2b$12$tNJOm8p5mend6LbwyeSNFu00qq9hDfkKaUEtWC8UAzgGHUgnJzpge', 'active', '2026-05-12 03:40:33'),
-(9, 'Hannah', 'Hannah Adaza', 'coordinator', '$2b$12$qxpVK1d5z6TJsp2ciF0cPuj.E7FLcjUbR8YE0CbAsRJ6/DrOA85hK', 'active', '2026-05-12 02:49:48');
+(1, 'admin', 'Krizia Antonette U. Bioco', 'admin', '$2b$12$BVOJORogwmQRgLxVNQGsBOh3gMEx71sw.JUPBQBu3AMvj0s4bJ0aW', 'active', '2026-05-06 05:09:54');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

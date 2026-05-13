@@ -204,14 +204,38 @@ async def view_orders(request: Request, page_p: int = 1, page_c: int = 1, error:
     offset_p = (page_p - 1) * records_per_page
     offset_c = (page_c - 1) * records_per_page
     
+    # --- UPDATED: Fetch Pending Orders with Item Details ---
     cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'pending'")
     total_pages_p = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
-    cursor.execute("SELECT id, customer_name, total_price, payment_method, payment_status, created_at FROM orders WHERE status = 'pending' ORDER BY created_at ASC LIMIT %s OFFSET %s", (records_per_page, offset_p))
+    
+    cursor.execute("""
+        SELECT o.id, o.customer_name, o.total_price, o.payment_method, o.payment_status, o.created_at, 
+               GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.name) SEPARATOR '<br>') as item_details 
+        FROM orders o 
+        LEFT JOIN order_items oi ON o.id = oi.order_id 
+        LEFT JOIN products p ON oi.product_id = p.id 
+        WHERE o.status = 'pending' 
+        GROUP BY o.id 
+        ORDER BY o.created_at ASC 
+        LIMIT %s OFFSET %s
+    """, (records_per_page, offset_p))
     pending_orders = cursor.fetchall()
 
-    cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'completed'")
+   # --- Fetch Recent Transactions (Completed within last 7 days) ---
+    cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'completed' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")
     total_pages_c = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
-    cursor.execute("SELECT id, customer_name, total_price, payment_method, payment_status, created_at FROM orders WHERE status = 'completed' ORDER BY created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset_c))
+    
+    cursor.execute("""
+        SELECT o.id, o.customer_name, o.total_price, o.payment_method, o.payment_status, o.created_at,
+               GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.name) SEPARATOR '<br>') as item_details
+        FROM orders o 
+        LEFT JOIN order_items oi ON o.id = oi.order_id 
+        LEFT JOIN products p ON oi.product_id = p.id 
+        WHERE o.status = 'completed' AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY o.id
+        ORDER BY o.created_at DESC 
+        LIMIT %s OFFSET %s
+    """, (records_per_page, offset_c))
     completed_orders = cursor.fetchall()
     
     db.close()
@@ -417,17 +441,30 @@ async def inventory_page(request: Request, page: int = 1):
     if 'username' not in request.session: return RedirectResponse(url="/", status_code=303)
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
+    
     cursor.execute("SELECT * FROM ingredients LIMIT 9")
     ingredients_data = cursor.fetchall()
     
     records_per_page = 7
     offset = (page - 1) * records_per_page
-    cursor.execute("SELECT COUNT(*) as total FROM ingredient_purchases")
+    
+    # 1. FIX: Only count actual purchases for pagination
+    cursor.execute("SELECT COUNT(*) as total FROM ingredient_purchases WHERE restock_type = 'purchase'")
     total_pages = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     
-    cursor.execute("SELECT ip.id, ip.created_at, i.name as ingredient_name, ip.purchase_amount, i.purchase_unit, ip.cost FROM ingredient_purchases ip JOIN ingredients i ON ip.ingredient_id = i.id ORDER BY ip.created_at DESC LIMIT %s OFFSET %s", (records_per_page, offset))
+    # 2. FIX: Filter by restock_type = 'purchase'
+    cursor.execute("""
+        SELECT ip.id, ip.created_at, i.name as ingredient_name, ip.purchase_amount, i.purchase_unit, ip.cost 
+        FROM ingredient_purchases ip 
+        JOIN ingredients i ON ip.ingredient_id = i.id 
+        WHERE ip.restock_type = 'purchase'
+        ORDER BY ip.created_at DESC 
+        LIMIT %s OFFSET %s
+    """, (records_per_page, offset))
+    
     history_data = cursor.fetchall()
     db.close()
+    
     return templates.TemplateResponse(request, "inventory.html", {"ingredients": ingredients_data, "history": history_data, "role": request.session.get('role'), "current_page": page, "total_pages": total_pages, "per_page": records_per_page})
 
 @app.post("/inventory/purchase", tags=["📦 Inventory Management"], summary="Log Market Purchase")
@@ -490,11 +527,27 @@ async def customers_page(request: Request, page_l: int = 1, page_t: int = 1, sea
     offset_l = (page_l - 1) * records_per_page
     offset_t = (page_t - 1) * records_per_page
     
-    cursor.execute("SELECT COUNT(DISTINCT customer_name) as total FROM orders")
+    # --- 1. UPDATED LEADERBOARD QUERY TO SUPPORT SEARCH ---
+    count_l_query = "SELECT COUNT(DISTINCT customer_name) as total FROM orders"
+    if search:
+        count_l_query += " WHERE customer_name LIKE %s"
+        cursor.execute(count_l_query, (f"%{search}%",))
+    else:
+        cursor.execute(count_l_query)
     total_pages_l = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
-    cursor.execute("SELECT o.customer_name, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_spent FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY o.customer_name ORDER BY total_spent DESC LIMIT %s OFFSET %s", (records_per_page, offset_l))
+    
+    data_l_query = "SELECT o.customer_name, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_spent FROM orders o JOIN order_items oi ON o.id = oi.order_id"
+    if search:
+        data_l_query += " WHERE o.customer_name LIKE %s"
+    data_l_query += " GROUP BY o.customer_name ORDER BY total_spent DESC LIMIT %s OFFSET %s"
+    
+    if search: 
+        cursor.execute(data_l_query, (f"%{search}%", records_per_page, offset_l))
+    else: 
+        cursor.execute(data_l_query, (records_per_page, offset_l))
     customers_data = cursor.fetchall()
     
+    # --- 2. EXISTING RECENT TRANSACTIONS QUERY ---
     count_query = "SELECT COUNT(*) as total FROM orders"
     if search:
         count_query += " WHERE customer_name LIKE %s"
@@ -540,7 +593,11 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     cursor.execute("SELECT COUNT(DISTINCT payment_method) as p_count FROM orders")
     p_total = cursor.fetchone()['p_count'] or 0
     
-    total_pages = max(1, (max(w_total, m_total, p_total) + records_per_page - 1) // records_per_page)
+    # NEW: Get count for expenses pagination
+    cursor.execute("SELECT COUNT(DISTINCT CONCAT(YEAR(created_at), MONTH(created_at))) as e_count FROM ingredient_purchases WHERE restock_type = 'purchase'")
+    e_total = cursor.fetchone()['e_count'] or 0
+    
+    total_pages = max(1, (max(w_total, m_total, p_total, e_total) + records_per_page - 1) // records_per_page)
 
     cursor.execute("SELECT CONCAT('Week ', WEEK(o.created_at)) AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY YEAR(o.created_at), WEEK(o.created_at) ORDER BY YEAR(o.created_at) DESC, WEEK(o.created_at) DESC LIMIT %s OFFSET %s", (records_per_page, offset))
     weekly_data = cursor.fetchall()
@@ -551,6 +608,20 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     cursor.execute("SELECT o.payment_method, COUNT(DISTINCT o.id) as total_orders, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY o.payment_method ORDER BY total_revenue DESC LIMIT %s OFFSET %s", (records_per_page, offset))
     payment_data = cursor.fetchall()
 
+    # NEW: Fetch Expenses Data Grouped by Month
+    cursor.execute("""
+        SELECT DATE_FORMAT(created_at, '%M %Y') AS period, 
+               COUNT(id) as total_transactions, 
+               SUM(cost) as total_expense 
+        FROM ingredient_purchases 
+        WHERE restock_type = 'purchase' 
+        GROUP BY YEAR(created_at), MONTH(created_at) 
+        ORDER BY YEAR(created_at) DESC, MONTH(created_at) DESC 
+        LIMIT %s OFFSET %s
+    """, (records_per_page, offset))
+    expenses_data = cursor.fetchall()
+
+    # Chart Queries
     cursor.execute("SELECT CONCAT('Week ', WEEK(o.created_at)) AS period, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY YEAR(o.created_at), WEEK(o.created_at) ORDER BY YEAR(o.created_at) DESC, WEEK(o.created_at) DESC LIMIT 10")
     weekly_chart = cursor.fetchall()
 
@@ -562,10 +633,9 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
 
     db.close()
     return templates.TemplateResponse(request, "reports.html", {
-        "weekly": weekly_data, "monthly": monthly_data, "payments": payment_data,
+        "weekly": weekly_data, "monthly": monthly_data, "payments": payment_data, "expenses": expenses_data,
         "weekly_chart": weekly_chart, "monthly_chart": monthly_chart, "payment_chart": payment_chart,
-        "current_page": page, "total_pages": total_pages, "per_page": records_per_page,
-        "active_tab": tab
+        "current_page": page, "total_pages": total_pages, "per_page": records_per_page, "active_tab": tab
     })
 
 @app.get("/reports/print", response_class=HTMLResponse, tags=["📈 Business Analytics"], summary="Generate Printable PDF Summary")
@@ -577,7 +647,7 @@ async def print_report(request: Request):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # 1. Overall Lifetime KPIs
+    # 1. Overall Lifetime KPIs (Revenue, Jars, Expenses, Net Profit)
     cursor.execute("SELECT COUNT(id) as total_orders, SUM(total_price) as total_revenue FROM orders WHERE status = 'completed'")
     kpis = cursor.fetchone()
     
@@ -585,7 +655,13 @@ async def print_report(request: Request):
     jars = cursor.fetchone()
     kpis['total_jars'] = jars['total_jars'] if jars and jars['total_jars'] else 0
     
-    # 2. Monthly Summary
+    cursor.execute("SELECT SUM(cost) as total_expenses FROM ingredient_purchases WHERE restock_type = 'purchase'")
+    exp = cursor.fetchone()
+    kpis['total_expenses'] = exp['total_expenses'] if exp and exp['total_expenses'] else 0
+    
+    kpis['net_profit'] = (kpis['total_revenue'] or 0) - kpis['total_expenses']
+    
+    # 2. Monthly Revenue Summary
     cursor.execute("""
         SELECT DATE_FORMAT(o.created_at, '%M %Y') AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue
         FROM orders o JOIN order_items oi ON o.id = oi.order_id
@@ -593,8 +669,18 @@ async def print_report(request: Request):
         GROUP BY YEAR(o.created_at), MONTH(o.created_at) ORDER BY YEAR(o.created_at) DESC, MONTH(o.created_at) DESC
     """)
     monthly_data = cursor.fetchall()
+
+    # 3. Monthly Expenses Summary
+    cursor.execute("""
+        SELECT DATE_FORMAT(created_at, '%M %Y') AS period, COUNT(id) as total_transactions, SUM(cost) as total_expense 
+        FROM ingredient_purchases 
+        WHERE restock_type = 'purchase' 
+        GROUP BY YEAR(created_at), MONTH(created_at) 
+        ORDER BY YEAR(created_at) DESC, MONTH(created_at) DESC 
+    """)
+    monthly_expenses = cursor.fetchall()
     
-    # 3. Weekly Summary
+    # 4. Weekly Summary
     cursor.execute("""
         SELECT CONCAT('Week ', WEEK(o.created_at), ', ', YEAR(o.created_at)) AS period, COUNT(DISTINCT o.id) as total_orders, SUM(oi.quantity) as total_jars, SUM(oi.subtotal) as total_revenue
         FROM orders o JOIN order_items oi ON o.id = oi.order_id
@@ -603,7 +689,7 @@ async def print_report(request: Request):
     """)
     weekly_data = cursor.fetchall()
 
-    # 4. Top Products All-Time
+    # 5. Top Products All-Time
     cursor.execute("""
         SELECT p.name, SUM(oi.quantity) as total_sold, SUM(oi.subtotal) as total_revenue
         FROM order_items oi JOIN products p ON oi.product_id = p.id
@@ -620,6 +706,7 @@ async def print_report(request: Request):
     return templates.TemplateResponse(request, "report_print.html", {
         "kpis": kpis,
         "monthly": monthly_data,
+        "monthly_expenses": monthly_expenses,
         "weekly": weekly_data,
         "products": product_data,
         "date": current_date,
@@ -743,7 +830,7 @@ async def audit_page(request: Request, page_a: int = 1, page_l: int = 1):
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    records_per_page = 10
+    records_per_page = 9
     offset_a = (page_a - 1) * records_per_page
     offset_l = (page_l - 1) * records_per_page
     
