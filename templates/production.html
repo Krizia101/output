@@ -30,6 +30,27 @@
     {% endfor %}
 </div>
 
+{% if role == 'admin' %}
+<div class="fixed-card" style="margin-top: 20px; border-top: 4px solid var(--leaf);">
+    <h3 style="margin-bottom: 15px; font-size: 14px; color: var(--leaf); display: flex; align-items: center; gap: 8px;">
+        <span style="background: var(--leaf-light); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px;">💰</span> Manage Retail Prices
+    </h3>
+    <form action="/production/update-prices" method="POST" onsubmit="showConfirmModal(event, 'Are you sure you want to update the retail prices? This will affect all future orders.');">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            {% for product in products %}
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: bold; font-size: 11px; color: var(--text-muted); text-transform: uppercase;">{{ product.name }} (₱)</label>
+                <input type="number" name="price_{{ product.id }}" value="{{ product.price }}" step="0.01" min="0" class="modern-input" style="font-weight: bold; color: var(--leaf);" required>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; text-align: right;">
+            <button type="submit" class="btn-leaf">💾 Save New Prices</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
 <div id="productionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26, 36, 21, 0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(6px);">
     <div class="card modal-box" style="width: 100%; max-width: 450px;">
         <div class="modal-header">
