@@ -19,6 +19,20 @@ app = FastAPI(
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SECRET_KEY', 'secret'))
 templates = Jinja2Templates(directory="templates")
 
+# ... your existing setup code ...
+app.add_middleware(SessionMiddleware, secret_key=os.getenv('SECRET_KEY', 'secret'))
+templates = Jinja2Templates(directory="templates")
+
+# --- NEW CACHE CONTROL MIDDLEWARE ---
+@app.middleware("http")
+async def prevent_browser_caching(request: Request, call_next):
+    response = await call_next(request)
+    # Tell the browser NEVER to cache these pages
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+# ------------------------------------
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -317,6 +331,41 @@ async def log_production(request: Request, product_id: int = Form(...), jars_pro
     db.commit()
     db.close()
     return RedirectResponse(url="/production?success=Batch started! Check Schedule.", status_code=303)
+
+@app.post("/production/update-prices", tags=["🏭 Production System"], summary="Update Product Retail Prices")
+async def update_product_prices(request: Request):
+    # Security Check: Only admins can change prices
+    if request.session.get('role') != 'admin':
+        return RedirectResponse(url="/production?error=Unauthorized to change prices.", status_code=303)
+        
+    form_data = await request.form()
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    
+    # Get current products to compare changes
+    cursor.execute("SELECT id, name, price FROM products")
+    products = cursor.fetchall()
+    
+    changes_made = []
+    
+    for product in products:
+        new_price_str = form_data.get(f"price_{product['id']}")
+        if new_price_str:
+            new_price = float(new_price_str)
+            # Only update if the price actually changed
+            if new_price != float(product['price']):
+                cursor.execute("UPDATE products SET price = %s WHERE id = %s", (new_price, product['id']))
+                changes_made.append(f"{product['name']} (₱{new_price})")
+                
+    if changes_made:
+        # Log this highly sensitive action in the audit log
+        log_audit(request.session.get('username'), "SYSTEM", f"Updated retail prices: {', '.join(changes_made)}.")
+        db.commit()
+        db.close()
+        return RedirectResponse(url="/production?success=Retail prices updated successfully!", status_code=303)
+        
+    db.close()
+    return RedirectResponse(url="/production", status_code=303)
 
 @app.get("/schedule", response_class=HTMLResponse, tags=["🏭 Production System"], summary="View Production Schedule & WIP")
 async def schedule_page(request: Request, page_w: int = 1, page_c: int = 1, error: str = None, success: str = None):
