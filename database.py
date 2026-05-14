@@ -3,7 +3,6 @@ from mysql.connector import Error
 import os
 from dotenv import load_dotenv
 
-# This loads the hidden variables from your .env file
 load_dotenv()
 
 def get_db_connection():

@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 # Load hidden variables from .env
 load_dotenv()
 
-# We add a nice title and description for the Swagger UI header!
 app = FastAPI(
     title="Pestong Yummy PH - Management API",
     description="Internal Enterprise Dashboard API for Pestong Yummy operations, inventory, and sales.",
@@ -19,11 +18,9 @@ app = FastAPI(
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SECRET_KEY', 'secret'))
 templates = Jinja2Templates(directory="templates")
 
-# ... your existing setup code ...
 app.add_middleware(SessionMiddleware, secret_key=os.getenv('SECRET_KEY', 'secret'))
 templates = Jinja2Templates(directory="templates")
 
-# --- NEW CACHE CONTROL MIDDLEWARE ---
 @app.middleware("http")
 async def prevent_browser_caching(request: Request, call_next):
     response = await call_next(request)
@@ -32,7 +29,6 @@ async def prevent_browser_caching(request: Request, call_next):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
-# ------------------------------------
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -204,7 +200,7 @@ async def view_orders(request: Request, page_p: int = 1, page_c: int = 1, error:
     offset_p = (page_p - 1) * records_per_page
     offset_c = (page_c - 1) * records_per_page
     
-    # --- UPDATED: Fetch Pending Orders with Item Details ---
+    # Fetch Pending Orders with Item Details ---
     cursor.execute("SELECT COUNT(*) as total FROM orders WHERE status = 'pending'")
     total_pages_p = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     
@@ -448,11 +444,11 @@ async def inventory_page(request: Request, page: int = 1):
     records_per_page = 7
     offset = (page - 1) * records_per_page
     
-    # 1. FIX: Only count actual purchases for pagination
+    # 1.Only count actual purchases for pagination
     cursor.execute("SELECT COUNT(*) as total FROM ingredient_purchases WHERE restock_type = 'purchase'")
     total_pages = max(1, (cursor.fetchone()['total'] + records_per_page - 1) // records_per_page)
     
-    # 2. FIX: Filter by restock_type = 'purchase'
+    # 2. Filter by restock_type = 'purchase'
     cursor.execute("""
         SELECT ip.id, ip.created_at, i.name as ingredient_name, ip.purchase_amount, i.purchase_unit, ip.cost 
         FROM ingredient_purchases ip 
@@ -593,7 +589,7 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     cursor.execute("SELECT COUNT(DISTINCT payment_method) as p_count FROM orders")
     p_total = cursor.fetchone()['p_count'] or 0
     
-    # NEW: Get count for expenses pagination
+    # Get count for expenses pagination
     cursor.execute("SELECT COUNT(DISTINCT CONCAT(YEAR(created_at), MONTH(created_at))) as e_count FROM ingredient_purchases WHERE restock_type = 'purchase'")
     e_total = cursor.fetchone()['e_count'] or 0
     
@@ -608,7 +604,7 @@ async def reports_page(request: Request, page: int = 1, tab: str = 'charts'):
     cursor.execute("SELECT o.payment_method, COUNT(DISTINCT o.id) as total_orders, SUM(oi.subtotal) as total_revenue FROM orders o JOIN order_items oi ON o.id = oi.order_id GROUP BY o.payment_method ORDER BY total_revenue DESC LIMIT %s OFFSET %s", (records_per_page, offset))
     payment_data = cursor.fetchall()
 
-    # NEW: Fetch Expenses Data Grouped by Month
+    # Fetch Expenses Data Grouped by Month
     cursor.execute("""
         SELECT DATE_FORMAT(created_at, '%M %Y') AS period, 
                COUNT(id) as total_transactions, 
@@ -785,13 +781,11 @@ async def create_user(request: Request, username: str = Form(...), full_name: st
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     
-    # --- ADD THIS NEW BLOCK HERE ---
     # 1. Prevent server crash by checking if the username already exists in the database
     cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
     if cursor.fetchone():
         db.close()
         return RedirectResponse(url="/users?error=That username is already taken (or belongs to a deactivated account). Choose a different username.", status_code=303)
-    # -------------------------------
 
     cursor.execute("SELECT full_name FROM users WHERE role = %s AND status = 'active'", (role,))
     if cursor.fetchone(): 
@@ -800,7 +794,6 @@ async def create_user(request: Request, username: str = Form(...), full_name: st
         
     cursor.execute("SELECT COUNT(*) as count FROM users WHERE status = 'active'")
     if cursor.fetchone()['count'] < 4:
-        # Assuming you added the password hashing from earlier!
         hashed_pw = hash_password(password)
         cursor.execute("INSERT INTO users (username, full_name, role, password_hash, status) VALUES (%s, %s, %s, %s, 'active')", (username, full_name, role, hashed_pw))
         log_audit(request.session.get('username'), "SYSTEM", f"Created {role} account.")
